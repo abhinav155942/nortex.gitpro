@@ -1,6 +1,6 @@
 {
-  "name": "bolt",
-  "description": "An AI Agent",
+  "name": "nortex",
+  "description": "Nortex - AI-Powered Full-Stack Web Development",
   "private": true,
   "license": "MIT",
   "sideEffects": false,
