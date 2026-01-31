@@ -13,17 +13,18 @@ interface FileContent {
   path: string;
 }
 
-// Helper function to make any command non-interactive
+// Helper function to make any command non-interactive and faster
 function makeNonInteractive(command: string): string {
-  // Set environment variables for non-interactive mode
-  const envVars = 'export CI=true DEBIAN_FRONTEND=noninteractive FORCE_COLOR=0';
+  // Set environment variables for non-interactive mode and faster npm
+  const envVars = 'export CI=true DEBIAN_FRONTEND=noninteractive FORCE_COLOR=0 npm_config_progress=false';
 
   // Common interactive packages and their non-interactive flags
+  // Optimized for speed with --prefer-offline, --no-audit, --no-fund, --legacy-peer-deps
   const interactivePackages = [
     { pattern: /npx\s+([^@\s]+@?[^\s]*)\s+init/g, replacement: 'echo "y" | npx --yes $1 init --defaults --yes' },
     { pattern: /npx\s+create-([^\s]+)/g, replacement: 'npx --yes create-$1 --template default' },
     { pattern: /npx\s+([^@\s]+@?[^\s]*)\s+add/g, replacement: 'npx --yes $1 add --defaults --yes' },
-    { pattern: /npm\s+install(?!\s+--)/g, replacement: 'npm install --yes --no-audit --no-fund --silent' },
+    { pattern: /npm\s+install(?!\s+--)/g, replacement: 'npm install --prefer-offline --no-audit --no-fund --legacy-peer-deps' },
     { pattern: /yarn\s+add(?!\s+--)/g, replacement: 'yarn add --non-interactive' },
     { pattern: /pnpm\s+add(?!\s+--)/g, replacement: 'pnpm add --yes' },
   ];
@@ -66,11 +67,12 @@ export async function detectProjectCommands(files: FileContent[]): Promise<Proje
       const availableCommand = preferredCommands.find((cmd) => scripts[cmd]);
 
       // Build setup command with non-interactive handling
-      let baseSetupCommand = 'npx update-browserslist-db@latest && npm install';
+      // Removed browserslist update step for faster loading - it's rarely needed and adds 10-15s
+      let baseSetupCommand = 'npm install';
 
       // Add shadcn init if it's a shadcn project
       if (isShadcnProject) {
-        baseSetupCommand += ' && npx shadcn@latest init';
+        baseSetupCommand += ' && npx shadcn@latest init --yes';
       }
 
       const setupCommand = makeNonInteractive(baseSetupCommand);
