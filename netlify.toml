@@ -1,0 +1,16 @@
+[build]
+  command = "pnpm run build"
+  publish = "build/client"
+
+[dev]
+  command = "pnpm run dev"
+  port = 5173
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@remix-run/node", "@remix-run/react", "react", "react-dom"]

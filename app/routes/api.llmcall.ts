@@ -8,6 +8,7 @@ import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
 import { createScopedLogger } from '~/utils/logger';
+import { getEnv } from '~/utils/env';
 
 export async function action(args: ActionFunctionArgs) {
   return llmCallAction(args);
@@ -18,7 +19,7 @@ async function getModelList(options: {
   providerSettings?: Record<string, IProviderSetting>;
   serverEnv?: Record<string, string>;
 }) {
-  const llmManager = LLMManager.getInstance(import.meta.env);
+  const llmManager = LLMManager.getInstance(options.serverEnv);
   return llmManager.updateModelList(options);
 }
 
@@ -106,7 +107,7 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
             content: `${message}`,
           },
         ],
-        env: context.cloudflare?.env as any,
+        env: getEnv(context) as any,
         apiKeys,
         providerSettings,
       });
@@ -151,7 +152,7 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
     }
   } else {
     try {
-      const models = await getModelList({ apiKeys, providerSettings, serverEnv: context.cloudflare?.env as any });
+      const models = await getModelList({ apiKeys, providerSettings, serverEnv: getEnv(context) as any });
       const modelDetails = models.find((m: ModelInfo) => m.name === model);
 
       if (!modelDetails) {
@@ -196,7 +197,7 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
         ],
         model: providerInfo.getModelInstance({
           model: modelDetails.name,
-          serverEnv: context.cloudflare?.env as any,
+          serverEnv: getEnv(context) as any,
           apiKeys,
           providerSettings,
         }),

@@ -4,6 +4,7 @@ import { stripIndents } from '~/utils/stripIndent';
 import type { ProviderInfo } from '~/types/model';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
 import { createScopedLogger } from '~/utils/logger';
+import { getEnv } from '~/utils/env';
 
 export async function action(args: ActionFunctionArgs) {
   return enhancerAction(args);
@@ -77,7 +78,7 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
           `,
         },
       ],
-      env: context.cloudflare?.env as any,
+      env: getEnv(context) as any,
       apiKeys,
       providerSettings,
       options: {

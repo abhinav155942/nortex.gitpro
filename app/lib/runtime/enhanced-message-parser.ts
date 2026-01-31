@@ -51,7 +51,7 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
   }
 
   private _hasDetectedArtifacts(input: string): boolean {
-    return input.includes('<boltArtifact') || input.includes('</boltArtifact>');
+    return input.includes('<nortexArtifact') || input.includes('</nortexArtifact>');
   }
 
   private _detectAndWrapCodeBlocks(messageId: string, input: string): string {
@@ -204,21 +204,21 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
   private _wrapInArtifact(artifactId: string, filePath: string, content: string): string {
     const title = filePath.split('/').pop() || 'File';
 
-    return `<boltArtifact id="${artifactId}" title="${title}" type="bundled">
-<boltAction type="file" filePath="${filePath}">
+    return `<nortexArtifact id="${artifactId}" title="${title}" type="bundled">
+<nortexAction type="file" filePath="${filePath}">
 ${content}
-</boltAction>
-</boltArtifact>`;
+</nortexAction>
+</nortexArtifact>`;
   }
 
   private _wrapInShellAction(content: string, messageId: string): string {
     const artifactId = `artifact-${messageId}-${this._artifactCounter++}`;
 
-    return `<boltArtifact id="${artifactId}" title="Shell Command" type="shell">
-<boltAction type="shell">
+    return `<nortexArtifact id="${artifactId}" title="Shell Command" type="shell">
+<nortexAction type="shell">
 ${content.trim()}
-</boltAction>
-</boltArtifact>`;
+</nortexAction>
+</nortexArtifact>`;
   }
 
   private _normalizeFilePath(filePath: string): string {

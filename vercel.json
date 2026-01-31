@@ -1,0 +1,7 @@
+{
+    "version": 2,
+    "public": true,
+    "framework": "remix",
+    "buildCommand": "pnpm run build",
+    "outputDirectory": "build/client"
+}

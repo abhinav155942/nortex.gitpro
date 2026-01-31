@@ -106,16 +106,16 @@ export const detectProjectType = async (
 
 export const filesToArtifacts = (files: { [path: string]: { content: string } }, id: string): string => {
   return `
-<boltArtifact id="${id}" title="User Updated Files">
+<nortexArtifact id="${id}" title="User Updated Files">
 ${Object.keys(files)
-  .map(
-    (filePath) => `
-<boltAction type="file" filePath="${filePath}">
+      .map(
+        (filePath) => `
+<nortexAction type="file" filePath="${filePath}">
 ${files[filePath].content}
-</boltAction>
+</nortexAction>
 `,
-  )
-  .join('\n')}
-</boltArtifact>
+      )
+      .join('\n')}
+</nortexArtifact>
   `;
 };

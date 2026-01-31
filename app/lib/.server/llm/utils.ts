@@ -44,9 +44,9 @@ export function extractPropertiesFromMessage(message: Omit<Message, 'id'>): {
   return { model, provider, content: cleanedContent };
 }
 
-export function simplifyBoltActions(input: string): string {
-  // Using regex to match boltAction tags that have type="file"
-  const regex = /(<boltAction[^>]*type="file"[^>]*>)([\s\S]*?)(<\/boltAction>)/g;
+export function simplifyNortexActions(input: string): string {
+  // Using regex to match nortexAction tags that have type="file"
+  const regex = /(<nortexAction[^>]*type="file"[^>]*>)([\s\S]*?)(<\/nortexAction>)/g;
 
   // Replace each matching occurrence
   return input.replace(regex, (_0, openingTag, _2, closingTag) => {
@@ -82,10 +82,10 @@ export function createFilesContext(files: FileMap, useRelativePath?: boolean) {
         filePath = path.replace('/home/project/', '');
       }
 
-      return `<boltAction type="file" filePath="${filePath}">${codeWithLinesNumbers}</boltAction>`;
+      return `<nortexAction type="file" filePath="${filePath}">${codeWithLinesNumbers}</nortexAction>`;
     });
 
-  return `<boltArtifact id="code-content" title="Code Content" >\n${fileContexts.join('\n')}\n</boltArtifact>`;
+  return `<nortexArtifact id="code-content" title="Code Content" >\n${fileContexts.join('\n')}\n</nortexArtifact>`;
 }
 
 export function extractCurrentContext(messages: Message[]) {
