@@ -33,6 +33,14 @@ PROVIDER_LIST.forEach((provider) => {
 
 export const STARTER_TEMPLATES: Template[] = [
   {
+    name: 'NextJS Shadcn',
+    label: 'Next.js with shadcn/ui',
+    description: 'Next.js starter fullstack template integrated with shadcn/ui components and styling system',
+    githubRepo: 'xKevIsDev/nortex-nextjs-shadcn-template',
+    tags: ['nextjs', 'react', 'typescript', 'shadcn', 'tailwind'],
+    icon: 'i-nortex:nextjs',
+  },
+  {
     name: 'Expo App',
     label: 'Expo App',
     description: 'Expo starter template for building cross-platform mobile apps',
@@ -47,14 +55,6 @@ export const STARTER_TEMPLATES: Template[] = [
     githubRepo: 'xKevIsDev/nortex-astro-basic-template',
     tags: ['astro', 'blog', 'performance'],
     icon: 'i-nortex:astro',
-  },
-  {
-    name: 'NextJS Shadcn',
-    label: 'Next.js with shadcn/ui',
-    description: 'Next.js starter fullstack template integrated with shadcn/ui components and styling system',
-    githubRepo: 'xKevIsDev/nortex-nextjs-shadcn-template',
-    tags: ['nextjs', 'react', 'typescript', 'shadcn', 'tailwind'],
-    icon: 'i-nortex:nextjs',
   },
   {
     name: 'Vite Shadcn',
