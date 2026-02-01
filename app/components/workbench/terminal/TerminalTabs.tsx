@@ -15,7 +15,7 @@ const logger = createScopedLogger('Terminal');
 const MAX_TERMINALS = 3;
 export const DEFAULT_TERMINAL_SIZE = 25;
 
-export const TerminalTabs = memo(() => {
+export const TerminalTabs = memo(({ fullScreen }: { fullScreen?: boolean }) => {
   const showTerminal = useStore(workbenchStore.showTerminal);
   const theme = useStore(themeStore);
 
@@ -79,6 +79,8 @@ export const TerminalTabs = memo(() => {
   }, []);
 
   useEffect(() => {
+    if (fullScreen) return;
+
     const { current: terminal } = terminalPanelRef;
 
     if (!terminal) {
@@ -94,7 +96,7 @@ export const TerminalTabs = memo(() => {
     }
 
     terminalToggledByShortcut.current = false;
-  }, [showTerminal]);
+  }, [showTerminal, fullScreen]);
 
   useEffect(() => {
     const unsubscribeFromEventEmitter = shortcutEventEmitter.on('toggleTerminal', () => {
@@ -113,6 +115,158 @@ export const TerminalTabs = memo(() => {
     };
   }, []);
 
+  const content = (
+    <div className="h-full">
+      <div className="bg-nortex-elements-terminals-background h-full flex flex-col">
+        <div className="flex items-center bg-nortex-elements-background-depth-2 border-y border-nortex-elements-borderColor gap-1.5 min-h-[34px] p-2">
+          {Array.from({ length: terminalCount + 1 }, (_, index) => {
+            const isActive = activeTerminal === index;
+
+            return (
+              <React.Fragment key={index}>
+                {index == 0 ? (
+                  <button
+                    key={index}
+                    title="Terminal"
+                    className={classNames(
+                      'flex items-center text-sm cursor-pointer gap-1.5 px-3 py-2 h-full whitespace-nowrap rounded-full',
+                      {
+                        'bg-nortex-elements-terminals-buttonBackground text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary':
+                          isActive,
+                        'bg-nortex-elements-background-depth-2 text-nortex-elements-textSecondary hover:bg-nortex-elements-terminals-buttonBackground':
+                          !isActive,
+                      },
+                    )}
+                    onClick={() => setActiveTerminal(index)}
+                  >
+                    <div className="i-ph:terminal-window-duotone text-lg" />
+                    Terminal
+                  </button>
+                ) : (
+                  <React.Fragment>
+                    <button
+                      key={index}
+                      className={classNames(
+                        'flex items-center text-sm cursor-pointer gap-1.5 px-3 py-2 h-full whitespace-nowrap rounded-full',
+                        {
+                          'bg-nortex-elements-terminals-buttonBackground text-nortex-elements-textPrimary': isActive,
+                          'bg-nortex-elements-background-depth-2 text-nortex-elements-textSecondary hover:bg-nortex-elements-terminals-buttonBackground':
+                            !isActive,
+                        },
+                      )}
+                      onClick={() => setActiveTerminal(index)}
+                    >
+                      <div className="i-ph:terminal-window-duotone text-lg" />
+                      Terminal {terminalCount > 1 && index}
+                      <button
+                        className="bg-transparent text-nortex-elements-textTertiary hover:text-nortex-elements-textPrimary hover:bg-transparent rounded"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeTerminal(index);
+                        }}
+                      >
+                        <div className="i-ph:x text-xs" />
+                      </button>
+                    </button>
+                  </React.Fragment>
+                )}
+              </React.Fragment>
+            );
+          })}
+          {terminalCount < MAX_TERMINALS && <IconButton icon="i-ph:plus" size="md" onClick={addTerminal} />}
+          <IconButton
+            icon="i-ph:arrow-clockwise"
+            title="Reset Terminal"
+            size="md"
+            onClick={() => {
+              const ref = terminalRefs.current.get(activeTerminal);
+
+              if (ref?.getTerminal()) {
+                const terminal = ref.getTerminal()!;
+                terminal.clear();
+                terminal.focus();
+
+                if (activeTerminal === 0) {
+                  workbenchStore.attachNortexTerminal(terminal);
+                } else {
+                  workbenchStore.attachTerminal(terminal);
+                }
+              }
+            }}
+          />
+          {!fullScreen && (
+            <IconButton
+              className="ml-auto"
+              icon="i-ph:caret-down"
+              title="Close"
+              size="md"
+              onClick={() => workbenchStore.toggleTerminal(false)}
+            />
+          )}
+        </div>
+        {Array.from({ length: terminalCount + 1 }, (_, index) => {
+          const isActive = activeTerminal === index;
+
+          logger.debug(`Starting nortex terminal [${index}]`);
+
+          if (index == 0) {
+            return (
+              <React.Fragment key={`terminal-container-${index}`}>
+                <Terminal
+                  key={`terminal-${index}`}
+                  id={`terminal_${index}`}
+                  className={classNames('h-full overflow-hidden modern-scrollbar-invert', {
+                    hidden: !isActive,
+                  })}
+                  ref={(ref) => {
+                    if (ref) {
+                      terminalRefs.current.set(index, ref);
+                    }
+                  }}
+                  onTerminalReady={(terminal) => workbenchStore.attachNortexTerminal(terminal)}
+                  onTerminalResize={(cols, rows) => workbenchStore.onTerminalResize(cols, rows)}
+                  theme={theme}
+                />
+                <TerminalManager
+                  terminal={terminalRefs.current.get(index)?.getTerminal() || null}
+                  isActive={isActive}
+                />
+              </React.Fragment>
+            );
+          } else {
+            return (
+              <React.Fragment key={`terminal-container-${index}`}>
+                <Terminal
+                  key={`terminal-${index}`}
+                  id={`terminal_${index}`}
+                  className={classNames('modern-scrollbar h-full overflow-hidden', {
+                    hidden: !isActive,
+                  })}
+                  ref={(ref) => {
+                    if (ref) {
+                      terminalRefs.current.set(index, ref);
+                    }
+                  }}
+                  onTerminalReady={(terminal) => workbenchStore.attachTerminal(terminal)}
+                  onTerminalResize={(cols, rows) => workbenchStore.onTerminalResize(cols, rows)}
+                  theme={theme}
+                />
+                <TerminalManager
+                  terminal={terminalRefs.current.get(index)?.getTerminal() || null}
+                  isActive={isActive}
+                />
+              </React.Fragment>
+            );
+          }
+        })}
+      </div>
+    </div>
+  );
+
+  if (fullScreen) {
+    return content;
+  }
+
   return (
     <Panel
       ref={terminalPanelRef}
@@ -130,148 +284,7 @@ export const TerminalTabs = memo(() => {
         }
       }}
     >
-      <div className="h-full">
-        <div className="bg-nortex-elements-terminals-background h-full flex flex-col">
-          <div className="flex items-center bg-nortex-elements-background-depth-2 border-y border-nortex-elements-borderColor gap-1.5 min-h-[34px] p-2">
-            {Array.from({ length: terminalCount + 1 }, (_, index) => {
-              const isActive = activeTerminal === index;
-
-              return (
-                <React.Fragment key={index}>
-                  {index == 0 ? (
-                    <button
-                      key={index}
-                      className={classNames(
-                        'flex items-center text-sm cursor-pointer gap-1.5 px-3 py-2 h-full whitespace-nowrap rounded-full',
-                        {
-                          'bg-nortex-elements-terminals-buttonBackground text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary':
-                            isActive,
-                          'bg-nortex-elements-background-depth-2 text-nortex-elements-textSecondary hover:bg-nortex-elements-terminals-buttonBackground':
-                            !isActive,
-                        },
-                      )}
-                      onClick={() => setActiveTerminal(index)}
-                    >
-                      <div className="i-ph:terminal-window-duotone text-lg" />
-                      Nortex Terminal
-                    </button>
-                  ) : (
-                    <React.Fragment>
-                      <button
-                        key={index}
-                        className={classNames(
-                          'flex items-center text-sm cursor-pointer gap-1.5 px-3 py-2 h-full whitespace-nowrap rounded-full',
-                          {
-                            'bg-nortex-elements-terminals-buttonBackground text-nortex-elements-textPrimary': isActive,
-                            'bg-nortex-elements-background-depth-2 text-nortex-elements-textSecondary hover:bg-nortex-elements-terminals-buttonBackground':
-                              !isActive,
-                          },
-                        )}
-                        onClick={() => setActiveTerminal(index)}
-                      >
-                        <div className="i-ph:terminal-window-duotone text-lg" />
-                        Terminal {terminalCount > 1 && index}
-                        <button
-                          className="bg-transparent text-nortex-elements-textTertiary hover:text-nortex-elements-textPrimary hover:bg-transparent rounded"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            closeTerminal(index);
-                          }}
-                        >
-                          <div className="i-ph:x text-xs" />
-                        </button>
-                      </button>
-                    </React.Fragment>
-                  )}
-                </React.Fragment>
-              );
-            })}
-            {terminalCount < MAX_TERMINALS && <IconButton icon="i-ph:plus" size="md" onClick={addTerminal} />}
-            <IconButton
-              icon="i-ph:arrow-clockwise"
-              title="Reset Terminal"
-              size="md"
-              onClick={() => {
-                const ref = terminalRefs.current.get(activeTerminal);
-
-                if (ref?.getTerminal()) {
-                  const terminal = ref.getTerminal()!;
-                  terminal.clear();
-                  terminal.focus();
-
-                  if (activeTerminal === 0) {
-                    workbenchStore.attachNortexTerminal(terminal);
-                  } else {
-                    workbenchStore.attachTerminal(terminal);
-                  }
-                }
-              }}
-            />
-            <IconButton
-              className="ml-auto"
-              icon="i-ph:caret-down"
-              title="Close"
-              size="md"
-              onClick={() => workbenchStore.toggleTerminal(false)}
-            />
-          </div>
-          {Array.from({ length: terminalCount + 1 }, (_, index) => {
-            const isActive = activeTerminal === index;
-
-            logger.debug(`Starting nortex terminal [${index}]`);
-
-            if (index == 0) {
-              return (
-                <React.Fragment key={`terminal-container-${index}`}>
-                  <Terminal
-                    key={`terminal-${index}`}
-                    id={`terminal_${index}`}
-                    className={classNames('h-full overflow-hidden modern-scrollbar-invert', {
-                      hidden: !isActive,
-                    })}
-                    ref={(ref) => {
-                      if (ref) {
-                        terminalRefs.current.set(index, ref);
-                      }
-                    }}
-                    onTerminalReady={(terminal) => workbenchStore.attachNortexTerminal(terminal)}
-                    onTerminalResize={(cols, rows) => workbenchStore.onTerminalResize(cols, rows)}
-                    theme={theme}
-                  />
-                  <TerminalManager
-                    terminal={terminalRefs.current.get(index)?.getTerminal() || null}
-                    isActive={isActive}
-                  />
-                </React.Fragment>
-              );
-            } else {
-              return (
-                <React.Fragment key={`terminal-container-${index}`}>
-                  <Terminal
-                    key={`terminal-${index}`}
-                    id={`terminal_${index}`}
-                    className={classNames('modern-scrollbar h-full overflow-hidden', {
-                      hidden: !isActive,
-                    })}
-                    ref={(ref) => {
-                      if (ref) {
-                        terminalRefs.current.set(index, ref);
-                      }
-                    }}
-                    onTerminalReady={(terminal) => workbenchStore.attachTerminal(terminal)}
-                    onTerminalResize={(cols, rows) => workbenchStore.onTerminalResize(cols, rows)}
-                    theme={theme}
-                  />
-                  <TerminalManager
-                    terminal={terminalRefs.current.get(index)?.getTerminal() || null}
-                    isActive={isActive}
-                  />
-                </React.Fragment>
-              );
-            }
-          })}
-        </div>
-      </div>
+      {content}
     </Panel>
   );
 });

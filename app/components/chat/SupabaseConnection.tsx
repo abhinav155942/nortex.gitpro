@@ -6,15 +6,21 @@ import { chatId } from '~/lib/persistence/useChatHistory';
 import { fetchSupabaseStats } from '~/lib/stores/supabase';
 import { Dialog, DialogRoot, DialogClose, DialogTitle, DialogButton } from '~/components/ui/Dialog';
 
-export function SupabaseConnection() {
+interface SupabaseConnectionProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
+}
+
+export function SupabaseConnection({ open, onOpenChange, showTrigger = true }: SupabaseConnectionProps = {}) {
   const {
     connection: supabaseConn,
     connecting,
     fetchingStats,
     isProjectsExpanded,
     setIsProjectsExpanded,
-    isDropdownOpen: isDialogOpen,
-    setIsDropdownOpen: setIsDialogOpen,
+    isDropdownOpen: internalDialogOpen,
+    setIsDropdownOpen: setInternalDialogOpen,
     handleConnect,
     handleDisconnect,
     selectProject,
@@ -23,6 +29,10 @@ export function SupabaseConnection() {
     isConnected,
     fetchProjectApiKeys,
   } = useSupabaseConnection();
+
+  // Use external state if provided, otherwise use internal state  
+  const isDialogOpen = open !== undefined ? open : internalDialogOpen;
+  const setIsDialogOpen = onOpenChange !== undefined ? onOpenChange : setInternalDialogOpen;
 
   const currentChatId = useStore(chatId);
 
@@ -77,25 +87,28 @@ export function SupabaseConnection() {
 
   return (
     <div className="relative">
-      <div className="flex border border-nortex-elements-borderColor rounded-md overflow-hidden mr-2 text-sm">
-        <Button
-          active
-          disabled={connecting}
-          onClick={() => setIsDialogOpen(!isDialogOpen)}
-          className="hover:bg-nortex-elements-item-backgroundActive !text-white flex items-center gap-2"
-        >
-          <img
-            className="w-4 h-4"
-            height="20"
-            width="20"
-            crossOrigin="anonymous"
-            src="https://cdn.simpleicons.org/supabase"
-          />
-          {isConnected && supabaseConn.project && (
-            <span className="ml-1 text-xs max-w-[100px] truncate">{supabaseConn.project.name}</span>
-          )}
-        </Button>
-      </div>
+      {showTrigger && (
+        <div className="flex border border-nortex-elements-borderColor rounded-md overflow-hidden mr-2 text-sm">
+          <Button
+            active
+            disabled={connecting}
+            onClick={() => setIsDialogOpen(!isDialogOpen)}
+            className="hover:bg-nortex-elements-item-backgroundActive !text-white flex items-center gap-2"
+          >
+            <img
+              className="w-4 h-4"
+              height="20"
+              width="20"
+              crossOrigin="anonymous"
+              src="https://cdn.simpleicons.org/supabase"
+              alt="Supabase"
+            />
+            {isConnected && supabaseConn.project && (
+              <span className="ml-1 text-xs max-w-[100px] truncate">{supabaseConn.project.name}</span>
+            )}
+          </Button>
+        </div>
+      )}
 
       <DialogRoot open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         {isDialogOpen && (
@@ -109,6 +122,7 @@ export function SupabaseConnection() {
                     width="24"
                     crossOrigin="anonymous"
                     src="https://cdn.simpleicons.org/supabase"
+                    alt="Supabase"
                   />
                   Connect to Supabase
                 </DialogTitle>
@@ -181,6 +195,7 @@ export function SupabaseConnection() {
                       width="24"
                       crossOrigin="anonymous"
                       src="https://cdn.simpleicons.org/supabase"
+                      alt="Supabase"
                     />
                     Supabase Connection
                   </DialogTitle>

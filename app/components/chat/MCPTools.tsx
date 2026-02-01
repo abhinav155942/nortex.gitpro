@@ -5,16 +5,26 @@ import { IconButton } from '~/components/ui/IconButton';
 import { useMCPStore } from '~/lib/stores/mcp';
 import McpServerList from '~/components/@settings/tabs/mcp/McpServerList';
 
-export function McpTools() {
+interface McpToolsProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
+}
+
+export function McpTools({ open, onOpenChange, showTrigger = true }: McpToolsProps = {}) {
   const isInitialized = useMCPStore((state) => state.isInitialized);
   const serverTools = useMCPStore((state) => state.serverTools);
   const initialize = useMCPStore((state) => state.initialize);
   const checkServersAvailabilities = useMCPStore((state) => state.checkServersAvailabilities);
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCheckingServers, setIsCheckingServers] = useState(false);
   const [expandedServer, setExpandedServer] = useState<string | null>(null);
+
+  // Use external state if provided, otherwise use internal state  
+  const isDialogOpen = open !== undefined ? open : internalOpen;
+  const setIsDialogOpen = onOpenChange !== undefined ? onOpenChange : setInternalOpen;
 
   useEffect(() => {
     if (!isInitialized) {
@@ -47,20 +57,22 @@ export function McpTools() {
 
   return (
     <div className="relative">
-      <div className="flex">
-        <IconButton
-          onClick={() => setIsDialogOpen(!isDialogOpen)}
-          title="MCP Tools Available"
-          disabled={!isInitialized}
-          className="transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {!isInitialized ? (
-            <div className="i-svg-spinners:90-ring-with-bg text-nortex-elements-loader-progress text-xl animate-spin"></div>
-          ) : (
-            <div className="i-nortex:mcp text-xl"></div>
-          )}
-        </IconButton>
-      </div>
+      {showTrigger && (
+        <div className="flex">
+          <IconButton
+            onClick={() => setIsDialogOpen(!isDialogOpen)}
+            title="MCP Tools Available"
+            disabled={!isInitialized}
+            className="transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {!isInitialized ? (
+              <div className="i-svg-spinners:90-ring-with-bg text-nortex-elements-loader-progress text-xl animate-spin"></div>
+            ) : (
+              <div className="i-nortex:mcp text-xl"></div>
+            )}
+          </IconButton>
+        </div>
+      )}
 
       <DialogRoot open={isDialogOpen} onOpenChange={handleDialogOpen}>
         {isDialogOpen && (

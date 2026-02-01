@@ -47,7 +47,7 @@ interface GitCloneButtonProps {
   importChat?: (description: string, messages: Message[], metadata?: IChatMetadata) => Promise<void>;
 }
 
-export default function GitCloneButton({ importChat, className }: GitCloneButtonProps) {
+export const GitCloneButton = ({ importChat, className }: GitCloneButtonProps) => {
   const { ready, gitClone } = useGit();
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -123,22 +123,21 @@ export default function GitCloneButton({ importChat, className }: GitCloneButton
         const filesMessage: Message = {
           role: 'assistant',
           content: `Cloning the repo ${repoUrl} into ${workdir}
-${
-  skippedFiles.length > 0
-    ? `\nSkipped files (${skippedFiles.length}):
+${skippedFiles.length > 0
+              ? `\nSkipped files (${skippedFiles.length}):
 ${skippedFiles.map((f) => `- ${f}`).join('\n')}`
-    : ''
-}
+              : ''
+            }
 
 <nortexArtifact id="imported-files" title="Git Cloned Files" type="bundled">
 ${fileContents
-  .map(
-    (file) =>
-      `<nortexAction type="file" filePath="${file.path}">
+              .map(
+                (file) =>
+                  `<nortexAction type="file" filePath="${file.path}">
 ${escapeNortexTags(file.content)}
 </nortexAction>`,
-  )
-  .join('\n')}
+              )
+              .join('\n')}
 </nortexArtifact>`,
           id: generateId(),
           createdAt: new Date(),
@@ -208,6 +207,7 @@ ${escapeNortexTags(file.content)}
               <div className="space-y-3">
                 <button
                   onClick={() => setSelectedProvider('github')}
+                  title="Select GitHub"
                   className="w-full p-4 rounded-lg bg-nortex-elements-background-depth-1 dark:bg-nortex-elements-background-depth-1 hover:bg-nortex-elements-background-depth-2 dark:hover:bg-nortex-elements-background-depth-2 border border-nortex-elements-borderColor dark:border-nortex-elements-borderColor hover:border-nortex-elements-borderColorActive dark:hover:border-nortex-elements-borderColorActive transition-all duration-200 text-left group"
                 >
                   <div className="flex items-center gap-3">
@@ -227,6 +227,7 @@ ${escapeNortexTags(file.content)}
 
                 <button
                   onClick={() => setSelectedProvider('gitlab')}
+                  title="Select GitLab"
                   className="w-full p-4 rounded-lg bg-nortex-elements-background-depth-1 dark:bg-nortex-elements-background-depth-1 hover:bg-nortex-elements-background-depth-2 dark:hover:bg-nortex-elements-background-depth-2 border border-nortex-elements-borderColor dark:border-nortex-elements-borderColor hover:border-nortex-elements-borderColorActive dark:hover:border-nortex-elements-borderColorActive transition-all duration-200 text-left group"
                 >
                   <div className="flex items-center gap-3">

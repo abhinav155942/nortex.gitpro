@@ -86,7 +86,38 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
   try {
     const mcpService = MCPService.getInstance();
-    const totalMessageContent = messages.reduce((acc, message) => acc + message.content, '');
+
+    // Filter out messages with empty or invalid content
+    const validatedMessages = messages.filter((message) => {
+      if (typeof message.content === 'string') {
+        return message.content.trim().length > 0;
+      }
+      if (Array.isArray(message.content)) {
+        const contentArray = message.content as Array<{ type: string; text?: string }>;
+        return contentArray.length > 0 && contentArray.some((item) => {
+          if (item.type === 'text') return (item.text || '').trim().length > 0;
+          return true; // Keep image/file parts
+        });
+      }
+      return false;
+    });
+
+    if (validatedMessages.length === 0) {
+      throw new Error('No valid messages to process');
+    }
+
+    const totalMessageContent = validatedMessages.reduce((acc, message) => {
+      // Handle both string content and array content (with images)
+      const content = typeof message.content === 'string'
+        ? message.content
+        : Array.isArray(message.content)
+          ? (message.content as Array<{ type: string; text?: string }>)
+            .filter((item) => item.type === 'text')
+            .map((item) => item.text || '')
+            .join(' ')
+          : '';
+      return acc + content;
+    }, '');
     logger.debug(`Total message length: ${totalMessageContent.split(' ').length}, words`);
 
     let lastChunk: string | undefined = undefined;
@@ -100,7 +131,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         let summary: string | undefined = undefined;
         let messageSliceId = 0;
 
-        const processedMessages = await mcpService.processToolInvocations(messages, dataStream);
+        const processedMessages = await mcpService.processToolInvocations(validatedMessages, dataStream);
 
         if (processedMessages.length > 3) {
           messageSliceId = processedMessages.length - 3;

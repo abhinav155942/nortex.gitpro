@@ -30,8 +30,8 @@ interface AssistantMessageProps {
   model?: string;
   provider?: ProviderInfo;
   parts:
-    | (TextUIPart | ReasoningUIPart | ToolInvocationUIPart | SourceUIPart | FileUIPart | StepStartUIPart)[]
-    | undefined;
+  | (TextUIPart | ReasoningUIPart | ToolInvocationUIPart | SourceUIPart | FileUIPart | StepStartUIPart)[]
+  | undefined;
   addToolResult: ({ toolCallId, result }: { toolCallId: string; result: any }) => void;
 }
 
@@ -146,39 +146,47 @@ export const AssistantMessage = memo(
               </Popover>
             )}
             <div className="flex w-full items-center justify-between">
-              {usage && (
-                <div>
-                  Tokens: {usage.totalTokens} (prompt: {usage.promptTokens}, completion: {usage.completionTokens})
-                </div>
-              )}
-              {(onRewind || onFork) && messageId && (
-                <div className="flex gap-2 flex-col lg:flex-row ml-auto">
-                  {onRewind && (
-                    <WithTooltip tooltip="Revert to this message">
-                      <button
-                        onClick={() => onRewind(messageId)}
-                        key="i-ph:arrow-u-up-left"
-                        className="i-ph:arrow-u-up-left text-xl text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary transition-colors"
-                      />
-                    </WithTooltip>
-                  )}
-                  {onFork && (
-                    <WithTooltip tooltip="Fork chat from this message">
-                      <button
-                        onClick={() => onFork(messageId)}
-                        key="i-ph:git-fork"
-                        className="i-ph:git-fork text-xl text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary transition-colors"
-                      />
-                    </WithTooltip>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <div className="i-nortex:logo?mask text-xl text-nortex-elements-textPrimary" />
+                <span className="font-medium text-nortex-elements-textPrimary">Nortex AI</span>
+              </div>
+              <div className="flex items-center gap-4">
+                {usage && (
+                  <div className="text-xs text-nortex-elements-textTertiary hidden sm:block">
+                    {usage.totalTokens} tokens
+                  </div>
+                )}
+                {(onRewind || onFork) && messageId && (
+                  <div className="flex gap-2 flex-col lg:flex-row ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onRewind && (
+                      <WithTooltip tooltip="Revert to this message">
+                        <button
+                          onClick={() => onRewind(messageId)}
+                          key="i-ph:arrow-u-up-left"
+                          className="i-ph:arrow-u-up-left text-lg text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary transition-colors"
+                        />
+                      </WithTooltip>
+                    )}
+                    {onFork && (
+                      <WithTooltip tooltip="Fork chat from this message">
+                        <button
+                          onClick={() => onFork(messageId)}
+                          key="i-ph:git-fork"
+                          className="i-ph:git-fork text-lg text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary transition-colors"
+                        />
+                      </WithTooltip>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </>
-        <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
-          {content}
-        </Markdown>
+        <div className="pl-0 sm:pl-7">
+          <Markdown append={append} chatMode={chatMode} setChatMode={setChatMode} model={model} provider={provider} html>
+            {content}
+          </Markdown>
+        </div>
         {toolInvocations && toolInvocations.length > 0 && (
           <ToolInvocations
             toolInvocations={toolInvocations}

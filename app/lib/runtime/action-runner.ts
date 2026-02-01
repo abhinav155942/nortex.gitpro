@@ -214,7 +214,7 @@ export class ActionRunner {
            * adding a delay to avoid any race condition between 2 start actions
            * i am up for a better approach
            */
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 500));
 
           return;
         }

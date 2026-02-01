@@ -45,7 +45,13 @@ export const CodeBlock = memo(
       logger.trace(`Language = ${effectiveLanguage}`);
 
       const processCode = async () => {
-        setHTML(await codeToHtml(code, { lang: effectiveLanguage, theme }));
+        try {
+          const html = await codeToHtml(code, { lang: effectiveLanguage, theme });
+          setHTML(html);
+        } catch (error) {
+          logger.error(`Failed to highlight code: ${error}`);
+          setHTML(`<pre style="white-space: pre-wrap; word-break: break-all;"><code>${code}</code></pre>`);
+        }
       };
 
       processCode();

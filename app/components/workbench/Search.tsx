@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import type { TextSearchOptions, TextSearchOnProgressCallback, WebContainer } from '@webcontainer/api';
+import type { WebContainer } from '@webcontainer/api';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { webcontainer } from '~/lib/webcontainer';
 import { WORK_DIR } from '~/utils/constants';
@@ -16,21 +16,22 @@ interface DisplayMatch {
 async function performTextSearch(
   instance: WebContainer,
   query: string,
-  options: Omit<TextSearchOptions, 'folders'>,
+  options: any,
   onProgress: (results: DisplayMatch[]) => void,
 ): Promise<void> {
-  if (!instance || typeof instance.internal?.textSearch !== 'function') {
+  const instanceAny = instance as any;
+  if (!instanceAny || typeof instanceAny.internal?.textSearch !== 'function') {
     console.error('WebContainer instance not available or internal searchText method is missing/not a function.');
 
     return;
   }
 
-  const searchOptions: TextSearchOptions = {
+  const searchOptions: any = {
     ...options,
     folders: [WORK_DIR],
   };
 
-  const progressCallback: TextSearchOnProgressCallback = (filePath: any, apiMatches: any[]) => {
+  const progressCallback: any = (filePath: any, apiMatches: any[]) => {
     const displayMatches: DisplayMatch[] = [];
 
     apiMatches.forEach((apiMatch: { preview: { text: string; matches: string | any[] }; ranges: any[] }) => {
@@ -67,7 +68,7 @@ async function performTextSearch(
   };
 
   try {
-    await instance.internal.textSearch(query, searchOptions, progressCallback);
+    await instanceAny.internal.textSearch(query, searchOptions, progressCallback);
   } catch (error) {
     console.error('Error during internal text search:', error);
   }
@@ -127,7 +128,7 @@ export function Search() {
 
     try {
       const instance = await webcontainer;
-      const options: Omit<TextSearchOptions, 'folders'> = {
+      const options: any = {
         homeDir: WORK_DIR, // Adjust this path as needed
         includes: ['**/*.*'],
         excludes: ['**/node_modules/**', '**/package-lock.json', '**/.git/**', '**/dist/**', '**/*.lock'],

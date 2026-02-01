@@ -18,6 +18,8 @@ import { description } from '~/lib/persistence';
 import Cookies from 'js-cookie';
 import { createSampler } from '~/utils/sampler';
 import type { ActionAlert, DeployAlert, SupabaseAlert } from '~/types/actions';
+import { detectProjectCommands } from '~/utils/projectCommands';
+import { generateId } from '~/utils/fileUtils';
 
 const { saveAs } = fileSaver;
 
@@ -33,7 +35,7 @@ export type ArtifactUpdateState = Pick<ArtifactState, 'title' | 'closed'>;
 
 type Artifacts = MapStore<Record<string, ArtifactState>>;
 
-export type WorkbenchViewType = 'code' | 'diff' | 'preview';
+export type WorkbenchViewType = 'code' | 'diff' | 'preview' | 'database' | 'payments' | 'analytics';
 
 export class WorkbenchStore {
   #previewsStore = new PreviewsStore(webcontainer);
@@ -85,6 +87,10 @@ export class WorkbenchStore {
 
   get previews() {
     return this.#previewsStore.previews;
+  }
+
+  get previewsStore() {
+    return this.#previewsStore;
   }
 
   get files() {
@@ -220,6 +226,12 @@ export class WorkbenchStore {
 
   setSelectedFile(filePath: string | undefined) {
     this.#editorStore.setSelectedFile(filePath);
+  }
+
+  closeFile(filePath: string) {
+    if (this.selectedFile.get() === filePath) {
+      this.setSelectedFile(undefined);
+    }
   }
 
   async saveFile(filePath: string) {
@@ -459,6 +471,77 @@ export class WorkbenchStore {
 
   abortAllActions() {
     // TODO: what do we wanna do and how do we wanna recover from this?
+  }
+
+  async runProjectSetup() {
+    const files = this.files.get();
+    const fileList = Object.entries(files)
+      .filter(([_, dirent]) => dirent?.type === 'file')
+      .map(([filePath, dirent]) => ({
+        path: filePath,
+        content: (dirent as any)?.content || '',
+      }));
+
+    const commands = await detectProjectCommands(fileList);
+    const artifactId = `setup-${Date.now()}`;
+    let actionCounter = 0;
+
+    this.addArtifact({
+      messageId: generateId(),
+      title: 'Project Setup',
+      id: artifactId,
+      type: 'setup',
+    });
+
+    // Run setup command (npm install)
+    if (commands.setupCommand) {
+      const setupActionId = `setup-action-${Date.now()}-${actionCounter++}`;
+
+      this.addAction({
+        artifactId,
+        messageId: generateId(),
+        actionId: setupActionId,
+        action: {
+          type: 'shell',
+          content: commands.setupCommand,
+        },
+      });
+
+      await this.runAction({
+        artifactId,
+        messageId: generateId(),
+        actionId: setupActionId,
+        action: {
+          type: 'shell',
+          content: commands.setupCommand,
+        },
+      });
+    }
+
+    // Run start command (npm run dev) to launch the preview
+    if (commands.startCommand) {
+      const startActionId = `start-action-${Date.now()}-${actionCounter++}`;
+
+      this.addAction({
+        artifactId,
+        messageId: generateId(),
+        actionId: startActionId,
+        action: {
+          type: 'start',
+          content: commands.startCommand,
+        },
+      });
+
+      this.runAction({
+        artifactId,
+        messageId: generateId(),
+        actionId: startActionId,
+        action: {
+          type: 'start',
+          content: commands.startCommand,
+        },
+      });
+    }
   }
 
   setReloadedMessages(messages: string[]) {

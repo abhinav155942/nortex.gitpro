@@ -28,6 +28,7 @@ export class PreviewsStore {
   #storageChannel?: BroadcastChannel;
 
   previews = atom<PreviewInfo[]>([]);
+  previewMode = atom<'desktop' | 'tablet' | 'mobile'>('desktop');
 
   constructor(webcontainerPromise: Promise<WebContainer>) {
     this.#webcontainer = webcontainerPromise;

@@ -14,6 +14,37 @@ const logger = createScopedLogger('FileTree');
 const NODE_PADDING_LEFT = 8;
 const DEFAULT_HIDDEN_FILES = [/\/node_modules\//, /\/\.next/, /\/\.astro/];
 
+function getFileIcon(filename: string) {
+  const extension = filename.split('.').pop()?.toLowerCase();
+
+  if (filename === '.gitignore') return 'i-ph:git-commit text-orange-500';
+  if (filename === 'package.json') return 'i-ph:package text-red-400';
+  if (filename.includes('config')) return 'i-ph:gear text-gray-400';
+
+  switch (extension) {
+    case 'json': return 'i-ph:brackets-curly text-yellow-500';
+    case 'js':
+    case 'jsx': return 'i-ph:file-js text-yellow-400';
+    case 'ts':
+    case 'tsx': return 'i-ph:file-ts text-blue-500';
+    case 'css':
+    case 'scss':
+    case 'less': return 'i-ph:paint-brush text-pink-400';
+    case 'html': return 'i-ph:file-html text-orange-500';
+    case 'svg':
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+    case 'gif':
+    case 'ico': return 'i-ph:image text-purple-400';
+    case 'md': return 'i-ph:info text-blue-300';
+    case 'lock': return 'i-ph:lock-key text-yellow-600';
+    case 'yml':
+    case 'yaml': return 'i-ph:file-text text-purple-300';
+    default: return 'i-ph:file text-nortex-elements-textTertiary';
+  }
+}
+
 interface Props {
   files?: FileMap;
   selectedFile?: string;
@@ -606,7 +637,8 @@ function Folder({ folder, collapsed, selected = false, onCopyPath, onCopyRelativ
         })}
         onClick={onClick}
       >
-        <div className="flex items-center w-full">
+        <div className="flex items-center w-full gap-1.5">
+          <div className={classNames('shrink-0', collapsed ? 'i-ph:folder text-blue-300' : 'i-ph:folder-open text-blue-400')} />
           <div className="flex-1 truncate pr-2">{folder.name}</div>
           {isLocked && (
             <span
@@ -692,16 +724,17 @@ function File({
           'bg-nortex-elements-item-backgroundAccent text-nortex-elements-item-contentAccent': selected,
         })}
         depth={depth}
-        iconClasses={classNames('i-ph:file-duotone scale-98', {
+        iconClasses={classNames('scale-98 invisible i-ph:caret-right', {
           'group-hover:text-nortex-elements-item-contentActive': !selected,
         })}
         onClick={onClick}
       >
         <div
-          className={classNames('flex items-center', {
+          className={classNames('flex items-center gap-1.5 w-full', {
             'group-hover:text-nortex-elements-item-contentActive': !selected,
           })}
         >
+          <div className={classNames('shrink-0', getFileIcon(name))} />
           <div className="flex-1 truncate pr-2">{name}</div>
           <div className="flex items-center gap-1">
             {showStats && (

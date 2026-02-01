@@ -332,12 +332,12 @@ export const Menu = () => {
         style={{ width: '340px' }}
         className={classNames(
           'flex selection-accent flex-col side-menu fixed top-0 h-full rounded-r-2xl',
-          'bg-white dark:bg-gray-950 border-r border-nortex-elements-borderColor',
-          'shadow-sm text-sm',
+          'bg-nortex-elements-background-depth-2 border-r border-nortex-elements-borderColor',
+          'shadow-2xl text-sm',
           isSettingsOpen ? 'z-40' : 'z-sidebar',
         )}
       >
-        <div className="h-12 flex items-center justify-between px-4 border-b border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-900/50 rounded-tr-2xl">
+        <div className="h-14 flex items-center justify-between px-4 border-b border-nortex-elements-borderColor">
           <div className="text-gray-900 dark:text-white font-medium"></div>
           <div className="flex items-center gap-3">
             <HelpButton onClick={() => window.open('https://stackblitz-labs.github.io/nortex/', '_blank')} />
@@ -365,7 +365,7 @@ export const Menu = () => {
             <div className="flex gap-2">
               <a
                 href="/"
-                className="flex-1 flex gap-2 items-center bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-500/20 rounded-lg px-4 py-2 transition-colors"
+                className="flex-1 flex gap-2 items-center justify-center bg-nortex-elements-item-backgroundAccent text-nortex-elements-item-contentAccent hover:bg-opacity-80 rounded-lg px-4 py-2 transition-all duration-200 border border-nortex-elements-borderColorActive/20"
               >
                 <span className="inline-block i-ph:plus-circle h-4 w-4" />
                 <span className="text-sm font-medium">Start new chat</span>
@@ -375,8 +375,8 @@ export const Menu = () => {
                 className={classNames(
                   'flex gap-1 items-center rounded-lg px-3 py-2 transition-colors',
                   selectionMode
-                    ? 'bg-purple-600 dark:bg-purple-500 text-white border border-purple-700 dark:border-purple-600'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700',
+                    ? 'bg-nortex-elements-item-backgroundAccent text-nortex-elements-item-contentAccent border border-nortex-elements-item-contentAccent'
+                    : 'bg-nortex-elements-item-backgroundDefault text-nortex-elements-item-contentDefault hover:bg-nortex-elements-item-backgroundActive border border-nortex-elements-borderColor',
                 )}
                 aria-label={selectionMode ? 'Exit selection mode' : 'Enter selection mode'}
               >
@@ -388,7 +388,7 @@ export const Menu = () => {
                 <span className="i-ph:magnifying-glass h-4 w-4 text-gray-400 dark:text-gray-500" />
               </div>
               <input
-                className="w-full bg-gray-50 dark:bg-gray-900 relative pl-9 pr-3 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500/50 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-800"
+                className="w-full bg-nortex-elements-background-depth-4 relative pl-9 pr-3 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-nortex-elements-borderColorActive text-sm text-nortex-elements-textPrimary placeholder-nortex-elements-textTertiary border border-transparent focus:border-nortex-elements-borderColorActive transition-all"
                 type="search"
                 placeholder="Search chats..."
                 onChange={handleSearchChange}
@@ -396,8 +396,8 @@ export const Menu = () => {
               />
             </div>
           </div>
-          <div className="flex items-center justify-between text-sm px-4 py-2">
-            <div className="font-medium text-gray-600 dark:text-gray-400">Your Chats</div>
+          <div className="flex items-center justify-between text-sm px-4 py-2 mt-2">
+            <div className="font-medium text-nortex-elements-textSecondary text-xs uppercase tracking-wider">Your Chats</div>
             {selectionMode && (
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={selectAll}>
@@ -525,7 +525,7 @@ export const Menu = () => {
               </Dialog>
             </DialogRoot>
           </div>
-          <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-800 px-4 py-3">
+          <div className="flex items-center justify-between border-t border-nortex-elements-borderColor px-4 py-3 bg-nortex-elements-background-depth-1">
             <div className="flex items-center gap-3">
               <SettingsButton onClick={handleSettingsClick} />
             </div>

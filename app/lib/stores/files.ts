@@ -1,4 +1,4 @@
-import type { PathWatcherEvent, WebContainer } from '@webcontainer/api';
+import type { WebContainer } from '@webcontainer/api';
 import { getEncoding } from 'istextorbinary';
 import { map, type MapStore } from 'nanostores';
 import { Buffer } from 'node:buffer';
@@ -596,7 +596,7 @@ export class FilesStore {
     this.#cleanupDeletedFiles();
 
     // Set up file watcher
-    webcontainer.internal.watchPaths(
+    (webcontainer as any).internal.watchPaths(
       {
         include: [`${WORK_DIR}/**`],
         exclude: ['**/node_modules', '.git', '**/package-lock.json'],
@@ -693,7 +693,7 @@ export class FilesStore {
     }
   }
 
-  #processEventBuffer(events: Array<[events: PathWatcherEvent[]]>) {
+  #processEventBuffer(events: Array<[events: any[]]>) {
     const watchEvents = events.flat(2);
 
     for (const { type, path, buffer } of watchEvents) {

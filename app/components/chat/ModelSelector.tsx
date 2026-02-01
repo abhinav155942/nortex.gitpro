@@ -58,8 +58,8 @@ const fuzzyMatch = (query: string, text: string): { score: number; matches: bool
 };
 
 const highlightText = (text: string, query: string): string => {
-  if (!query) {
-    return text;
+  if (!query || !text || typeof text !== 'string') {
+    return text || '';
   }
 
   const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');

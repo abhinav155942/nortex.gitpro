@@ -44,11 +44,27 @@ function getCompletionTokenLimit(modelDetails: any): number {
 }
 
 function sanitizeText(text: string): string {
-  let sanitized = text.replace(/<div class=\\"__nortexThought__\\">.*?<\/div>/s, '');
-  sanitized = sanitized.replace(/<think>.*?<\/think>/s, '');
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+  let sanitized = text.replace(/<div class=\\"__nortexThought__\\">.+?<\/div>/s, '');
+  sanitized = sanitized.replace(/<think>.+?<\/think>/s, '');
   sanitized = sanitized.replace(/<nortexAction type="file" filePath="package-lock\.json">[\s\S]*?<\/nortexAction>/g, '');
 
   return sanitized.trim();
+}
+
+function getTextContent(content: string | { type: string; text?: string; image?: string }[]): string {
+  if (typeof content === 'string') {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    return content
+      .filter((item) => item.type === 'text' && typeof item.text === 'string')
+      .map((item) => item.text!)
+      .join('\n');
+  }
+  return '';
 }
 
 export async function streamText(props: {
@@ -91,7 +107,8 @@ export async function streamText(props: {
       currentProvider = provider;
       newMessage.content = sanitizeText(content);
     } else if (message.role == 'assistant') {
-      newMessage.content = sanitizeText(message.content);
+      const textContent = getTextContent(message.content as string | { type: string; text?: string }[]);
+      newMessage.content = sanitizeText(textContent);
     }
 
     // Sanitize all text parts in parts array, if present
@@ -102,6 +119,20 @@ export async function streamText(props: {
     }
 
     return newMessage;
+  }).filter((message) => {
+    // Check for string content
+    const hasContent = typeof message.content === 'string' && message.content.length > 0;
+
+    // Check for parts content (if parts exist and at least one part is valid)
+    // Note: We also need to check if parts have actual content after sanitization
+    const hasParts = Array.isArray(message.parts) && message.parts.length > 0 && message.parts.some((part) => {
+      if (part.type === 'text') {
+        return part.text && part.text.trim().length > 0;
+      }
+      return true; // Assume non-text parts (images, tool-usage) are valid
+    });
+
+    return hasContent || hasParts;
   });
 
   const provider = PROVIDER_LIST.find((p) => p.name === currentProvider) || DEFAULT_PROVIDER;
@@ -241,19 +272,19 @@ export async function streamText(props: {
   const filteredOptions =
     isReasoning && options
       ? Object.fromEntries(
-          Object.entries(options).filter(
-            ([key]) =>
-              ![
-                'temperature',
-                'topP',
-                'presencePenalty',
-                'frequencyPenalty',
-                'logprobs',
-                'topLogprobs',
-                'logitBias',
-              ].includes(key),
-          ),
-        )
+        Object.entries(options).filter(
+          ([key]) =>
+            ![
+              'temperature',
+              'topP',
+              'presencePenalty',
+              'frequencyPenalty',
+              'logprobs',
+              'topLogprobs',
+              'logitBias',
+            ].includes(key),
+        ),
+      )
       : options || {};
 
   // DEBUG: Log filtered options

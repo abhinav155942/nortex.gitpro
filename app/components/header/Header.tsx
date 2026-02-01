@@ -10,7 +10,7 @@ export function Header() {
 
   return (
     <header
-      className={classNames('flex items-center px-4 border-b h-[var(--header-height)]', {
+      className={classNames('flex items-center px-4 border-b h-[var(--header-height)] bg-nortex-elements-background-depth-2 border-nortex-elements-borderColor shadow-sm', {
         'border-transparent': !chat.started,
         'border-nortex-elements-borderColor': chat.started,
       })}

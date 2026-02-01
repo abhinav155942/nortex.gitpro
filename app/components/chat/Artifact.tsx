@@ -78,63 +78,55 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
       : artifact?.title; // Fallback to original title for non-bundled or if artifact is missing
 
   return (
-    <>
-      <div className="artifact border border-nortex-elements-borderColor flex flex-col overflow-hidden rounded-lg w-full transition-border duration-150">
+    <div className="my-4">
+      <div className="relative group overflow-hidden rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 backdrop-blur-md transition-all hover:border-blue-200 dark:hover:border-blue-800/50">
         <div className="flex">
           <button
-            className="flex items-stretch bg-nortex-elements-artifacts-background hover:bg-nortex-elements-artifacts-backgroundHover w-full overflow-hidden"
+            className="flex items-center w-full p-4 gap-4 text-left transition-colors"
             onClick={() => {
               const showWorkbench = workbenchStore.showWorkbench.get();
               workbenchStore.showWorkbench.set(!showWorkbench);
             }}
           >
-            <div className="px-5 p-3.5 w-full text-left">
-              <div className="w-full text-nortex-elements-textPrimary font-medium leading-5 text-sm">
-                {/* Use the dynamic title here */}
+            <div className="relative flex items-center justify-center w-12 h-12 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20">
+              {allActionFinished ? <div className="i-ph:check-bold text-xl" /> : <div className="i-ph:files-duotone text-xl" />}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-nortex-elements-textPrimary truncate mb-0.5">
                 {dynamicTitle}
-              </div>
-              <div className="w-full w-full text-nortex-elements-textSecondary text-xs mt-0.5">
-                Click to open Workbench
-              </div>
+              </h3>
+              <p className="text-xs text-blue-600/80 dark:text-blue-400/70 truncate">
+                {allActionFinished ? 'Project ready' : 'Building project...'} · Click to open Workbench
+              </p>
+            </div>
+
+            <div className="text-blue-400/50 group-hover:text-blue-500 transition-colors">
+              <div className="i-ph:caret-right-bold text-lg" />
             </div>
           </button>
-          {artifact.type !== 'bundled' && <div className="bg-nortex-elements-artifacts-borderColor w-[1px]" />}
-          <AnimatePresence>
-            {actions.length && artifact.type !== 'bundled' && (
-              <motion.button
-                initial={{ width: 0 }}
-                animate={{ width: 'auto' }}
-                exit={{ width: 0 }}
-                transition={{ duration: 0.15, ease: cubicEasingFn }}
-                className="bg-nortex-elements-artifacts-background hover:bg-nortex-elements-artifacts-backgroundHover"
-                onClick={toggleActions}
-              >
-                <div className="p-4">
-                  <div className={showActions ? 'i-ph:caret-up-bold' : 'i-ph:caret-down-bold'}></div>
-                </div>
-              </motion.button>
-            )}
-          </AnimatePresence>
+
+          {actions.length && artifact.type !== 'bundled' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleActions();
+              }}
+              title={showActions ? 'Hide actions' : 'Show actions'}
+              className="px-2 border-l border-blue-100 dark:border-blue-900/30 hover:bg-blue-500/5 transition-colors text-blue-400"
+            >
+              <div className={classNames(showActions ? 'i-ph:caret-up-bold' : 'i-ph:caret-down-bold')} />
+            </button>
+          )}
         </div>
-        {artifact.type === 'bundled' && (
-          <div className="flex items-center gap-1.5 p-5 bg-nortex-elements-actions-background border-t border-nortex-elements-artifacts-borderColor">
-            <div className={classNames('text-lg', getIconColor(allActionFinished ? 'complete' : 'running'))}>
-              {allActionFinished ? (
-                <div className="i-ph:check"></div>
-              ) : (
-                <div className="i-svg-spinners:90-ring-with-bg"></div>
-              )}
-            </div>
-            <div className="text-nortex-elements-textPrimary font-medium leading-5 text-sm">
-              {/* This status text remains the same */}
-              {allActionFinished
-                ? artifact.id === 'restored-project-setup'
-                  ? 'Restore files from snapshot'
-                  : 'Initial files created'
-                : 'Creating initial files'}
-            </div>
+
+        {/* Progress Bar (if running) */}
+        {!allActionFinished && (
+          <div className="h-0.5 w-full bg-blue-500/10 overflow-hidden">
+            <div className="h-full bg-blue-500/50 animate-progress origin-left" />
           </div>
         )}
+
         <AnimatePresence>
           {artifact.type !== 'bundled' && showActions && actions.length > 0 && (
             <motion.div
@@ -144,16 +136,15 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
               exit={{ height: '0px' }}
               transition={{ duration: 0.15 }}
             >
-              <div className="bg-nortex-elements-artifacts-borderColor h-[1px]" />
-
-              <div className="p-5 text-left bg-nortex-elements-actions-background">
+              <div className="bg-blue-100 dark:bg-blue-900/30 h-[1px]" />
+              <div className="p-4 text-left bg-blue-50/30 dark:bg-blue-950/20">
                 <ActionList actions={actions} />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-    </>
+    </div>
   );
 });
 

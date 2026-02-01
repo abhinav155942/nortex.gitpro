@@ -36,22 +36,16 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
     // First try the normal parsing
     let output = super.parse(messageId, input);
 
-    // If no artifacts were detected, check for code blocks that should be files
-    if (!this._hasDetectedArtifacts(input)) {
-      const enhancedInput = this._detectAndWrapCodeBlocks(messageId, input);
+    // Always check for code blocks that should be files, but prioritize existing artifacts
+    const enhancedInput = this._detectAndWrapCodeBlocks(messageId, input);
 
-      if (enhancedInput !== input) {
-        // Reset and reparse with enhanced input
-        this.reset();
-        output = super.parse(messageId, enhancedInput);
-      }
+    if (enhancedInput !== input) {
+      // Reset and reparse with enhanced input
+      this.reset();
+      output = super.parse(messageId, enhancedInput);
     }
 
     return output;
-  }
-
-  private _hasDetectedArtifacts(input: string): boolean {
-    return input.includes('<nortexArtifact') || input.includes('</nortexArtifact>');
   }
 
   private _detectAndWrapCodeBlocks(messageId: string, input: string): string {
@@ -71,14 +65,14 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
     const patterns = [
       // Pattern 1: File path followed by code block (most common, check first)
       {
-        regex: /(?:^|\n)([\/\w\-\.]+\.\w+):?\s*\n+```(\w*)\n([\s\S]*?)```/gim,
+        regex: /(?:^|\n)([\/\w\-\.]+\.\w+):?\s+```(\w*)\n([\s\S]*?)```/gim,
         type: 'file_path',
       },
 
       // Pattern 2: Explicit file creation mentions
       {
         regex:
-          /(?:create|update|modify|edit|write|add|generate|here'?s?|file:?)\s+(?:a\s+)?(?:new\s+)?(?:file\s+)?(?:called\s+)?[`'"]*([\/\w\-\.]+\.\w+)[`'"]*:?\s*\n+```(\w*)\n([\s\S]*?)```/gi,
+          /(?:create|update|modify|edit|write|add|generate|here'?s?|file:?)\s+(?:a\s+)?(?:new\s+)?(?:file\s+)?(?:called\s+)?[`'"]*([\/\w\-\.]+\.\w+)[`'"]*:?\s+```(\w*)\n([\s\S]*?)```/gi,
         type: 'explicit_create',
       },
 
@@ -90,11 +84,17 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
 
       // Pattern 4: Code block with "in <filename>" context
       {
-        regex: /(?:in|for|update)\s+[`'"]*([\/\w\-\.]+\.\w+)[`'"]*:?\s*\n+```(\w*)\n([\s\S]*?)```/gi,
+        regex: /(?:in|for|update)\s+[`'"]*([\/\w\-\.]+\.\w+)[`'"]*:?\s+```(\w*)\n([\s\S]*?)```/gi,
         type: 'in_filename',
       },
 
-      // Pattern 5: Structured files (package.json, components)
+      // Pattern 5: Special format {{[[ name="..." branch="..." ]] for file creation
+      {
+        regex: /\{\{\[\[\s*name="([^"]+)"(?:\s+branch="([^"]*)")?\s*\]\]\s*([\s\S]*?)\{\{\]\]/gi,
+        type: 'special_token',
+      },
+
+      // Pattern 6: Structured files (package.json, components)
       {
         regex:
           /```(?:json|jsx?|tsx?|html?|vue|svelte)\n(\{[\s\S]*?"(?:name|version|scripts|dependencies|devDependencies)"[\s\S]*?\}|<\w+[^>]*>[\s\S]*?<\/\w+>[\s\S]*?)```/gi,
@@ -105,7 +105,6 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
     // Process each pattern in order of likelihood
     for (const pattern of patterns) {
       enhanced = enhanced.replace(pattern.regex, (match, ...args) => {
-        // Skip if already processed
         const blockHash = this._hashBlock(match);
 
         if (processed.has(blockHash)) {
@@ -119,6 +118,14 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
         // Extract based on pattern type
         if (pattern.type === 'comment_filename') {
           [language, filePath, content] = args;
+        } else if (pattern.type === 'special_token') {
+          let branch: string;
+          [filePath, branch, content] = args;
+          language = filePath.split('.').pop() || 'plaintext';
+
+          if (branch) {
+            logger.debug(`File branch: ${branch}`);
+          }
         } else if (pattern.type === 'structured_file') {
           content = args[0];
           language = pattern.regex.source.includes('json') ? 'json' : 'jsx';
@@ -141,17 +148,19 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
 
         // Validate file path
         if (!this._isValidFilePath(filePath)) {
-          return match; // Return original if invalid
+          return match;
         }
 
         // Check if there's proper context for file creation
         if (!this._hasFileContext(enhanced, match)) {
-          // If no clear file context, skip unless it's an explicit file pattern
           const isExplicitFilePattern =
-            pattern.type === 'explicit_create' || pattern.type === 'comment_filename' || pattern.type === 'file_path';
+            pattern.type === 'explicit_create' ||
+            pattern.type === 'comment_filename' ||
+            pattern.type === 'file_path' ||
+            pattern.type === 'special_token';
 
           if (!isExplicitFilePattern) {
-            return match; // Return original if no context
+            return match;
           }
         }
 
@@ -160,7 +169,10 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
 
         // Generate artifact wrapper
         const artifactId = `artifact-${messageId}-${this._artifactCounter++}`;
-        const wrapped = this._wrapInArtifact(artifactId, filePath, content);
+        const wrapped =
+          pattern.type === 'special_token'
+            ? this._wrapInArtifact(artifactId, filePath, content, (args as any)[1])
+            : this._wrapInArtifact(artifactId, filePath, content);
 
         logger.debug(`Auto-wrapped code block as file: ${filePath}`);
 
@@ -188,8 +200,6 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
       processed.add(blockHash);
 
       const artifactId = `artifact-${messageId}-${this._artifactCounter++}`;
-
-      // Clean content - remove leading/trailing whitespace but preserve indentation
       content = content.trim();
 
       const wrapped = this._wrapInArtifact(artifactId, filePath, content);
@@ -201,8 +211,12 @@ export class EnhancedStreamingMessageParser extends StreamingMessageParser {
     return enhanced;
   }
 
-  private _wrapInArtifact(artifactId: string, filePath: string, content: string): string {
-    const title = filePath.split('/').pop() || 'File';
+  private _wrapInArtifact(artifactId: string, filePath: string, content: string, branch?: string): string {
+    let title = filePath.split('/').pop() || 'File';
+
+    if (branch) {
+      title += ` [${branch}]`;
+    }
 
     return `<nortexArtifact id="${artifactId}" title="${title}" type="bundled">
 <nortexAction type="file" filePath="${filePath}">
@@ -222,18 +236,13 @@ ${content.trim()}
   }
 
   private _normalizeFilePath(filePath: string): string {
-    // Remove quotes, backticks, and clean up
     filePath = filePath.replace(/[`'"]/g, '').trim();
-
-    // Ensure forward slashes
     filePath = filePath.replace(/\\/g, '/');
 
-    // Remove leading ./ if present
     if (filePath.startsWith('./')) {
       filePath = filePath.substring(2);
     }
 
-    // Add leading slash if missing and not a relative path
     if (!filePath.startsWith('/') && !filePath.startsWith('.')) {
       filePath = '/' + filePath;
     }
@@ -242,27 +251,24 @@ ${content.trim()}
   }
 
   private _isValidFilePath(filePath: string): boolean {
-    // Check for valid file extension
     const hasExtension = /\.\w+$/.test(filePath);
 
     if (!hasExtension) {
       return false;
     }
 
-    // Check for valid characters
     const isValid = /^[\/\w\-\.]+$/.test(filePath);
 
     if (!isValid) {
       return false;
     }
 
-    // Exclude certain patterns that are likely not real files
     const excludePatterns = [
       /^\/?(tmp|temp|test|example)\//i,
       /\.(tmp|temp|bak|backup|old|orig)$/i,
-      /^\/?(output|result|response)\//i, // Common AI response folders
-      /^code_\d+\.(sh|bash|zsh)$/i, // Auto-generated shell files (our target issue)
-      /^(untitled|new|demo|sample)\d*\./i, // Generic demo names
+      /^\/?(output|result|response)\//i,
+      /^code_\d+\.(sh|bash|zsh)$/i,
+      /^(untitled|new|demo|sample)\d*\./i,
     ];
 
     for (const pattern of excludePatterns) {
@@ -275,14 +281,12 @@ ${content.trim()}
   }
 
   private _hasFileContext(input: string, codeBlockMatch: string): boolean {
-    // Check if there's explicit file context around the code block
     const matchIndex = input.indexOf(codeBlockMatch);
 
     if (matchIndex === -1) {
       return false;
     }
 
-    // Look for context before the code block
     const beforeContext = input.substring(Math.max(0, matchIndex - 200), matchIndex);
     const afterContext = input.substring(matchIndex + codeBlockMatch.length, matchIndex + codeBlockMatch.length + 100);
 
@@ -299,7 +303,6 @@ ${content.trim()}
   }
 
   private _inferFileNameFromContent(content: string, language: string): string {
-    // Try to infer component name from content
     const componentMatch = content.match(
       /(?:function|class|const|export\s+default\s+function|export\s+function)\s+(\w+)/,
     );
@@ -311,30 +314,26 @@ ${content.trim()}
       return `/components/${name}${ext}`;
     }
 
-    // Check for App component
     if (content.includes('function App') || content.includes('const App')) {
       return '/App.jsx';
     }
 
-    // Default to a generic name
     return `/component-${Date.now()}.jsx`;
   }
 
   private _hashBlock(content: string): string {
-    // Simple hash for identifying processed blocks
     let hash = 0;
 
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
       hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash = hash & hash;
     }
 
     return hash.toString(36);
   }
 
   private _isShellCommand(content: string, language: string): boolean {
-    // Check if language suggests shell execution
     const shellLanguages = ['bash', 'sh', 'shell', 'zsh', 'fish', 'powershell', 'ps1'];
     const isShellLang = shellLanguages.includes(language.toLowerCase());
 
@@ -348,75 +347,62 @@ ${content.trim()}
       .map((line) => line.trim())
       .filter(Boolean);
 
-    // Empty content is not a command
     if (lines.length === 0) {
       return false;
     }
 
-    // First, check if it looks like script content (should NOT be treated as commands)
     if (this._looksLikeScriptContent(trimmedContent)) {
-      return false; // This is a script file, not commands to execute
+      return false;
     }
 
-    // Single line commands are likely to be executed
     if (lines.length === 1) {
       return this._isSingleLineCommand(lines[0]);
     }
 
-    // Multi-line: check if it's a command sequence
     return this._isCommandSequence(lines);
   }
 
   private _isSingleLineCommand(line: string): boolean {
-    // Check for command chains with &&, ||, |, ;
     const hasChaining = /[;&|]{1,2}/.test(line);
 
     if (hasChaining) {
-      // Split by chaining operators and check if parts look like commands
       const parts = line.split(/[;&|]{1,2}/).map((p) => p.trim());
       return parts.every((part) => part.length > 0 && !this._looksLikeScriptContent(part));
     }
 
-    // Check for common command prefix patterns
     const prefixPatterns = [
-      /^sudo\s+/, // sudo commands
-      /^time\s+/, // time profiling
-      /^nohup\s+/, // background processes
-      /^watch\s+/, // repeated execution
-      /^env\s+\w+=\w+\s+/, // environment variable setting
+      /^sudo\s+/,
+      /^time\s+/,
+      /^nohup\s+/,
+      /^watch\s+/,
+      /^env\s+\w+=\w+\s+/,
     ];
 
-    // Remove prefixes to check the actual command
     let cleanLine = line;
 
     for (const prefix of prefixPatterns) {
       cleanLine = cleanLine.replace(prefix, '');
     }
 
-    // Optimized O(1) lookup using Map
     for (const [, pattern] of this._commandPatternMap) {
       if (pattern.test(cleanLine)) {
         return true;
       }
     }
 
-    // Fallback to simple command detection
     return this._isSimpleCommand(cleanLine);
   }
 
   private _isCommandSequence(lines: string[]): boolean {
-    // If most lines look like individual commands, treat as command sequence
     const commandLikeLines = lines.filter(
       (line) =>
         line.length > 0 && !line.startsWith('#') && (this._isSingleLineCommand(line) || this._isSimpleCommand(line)),
     );
 
-    // If more than 70% of non-comment lines are commands, treat as command sequence
     return commandLikeLines.length / lines.length > 0.7;
   }
 
   private _isSimpleCommand(line: string): boolean {
-    // Simple heuristics for basic commands
     const words = line.split(/\s+/);
 
     if (words.length === 0) {
@@ -425,66 +411,55 @@ ${content.trim()}
 
     const firstWord = words[0];
 
-    // Don't treat variable assignments as commands (script-like)
     if (line.includes('=') && !line.startsWith('export ') && !line.startsWith('env ') && !firstWord.includes('=')) {
       return false;
     }
 
-    // Don't treat function definitions as commands
     if (line.includes('function ') || line.match(/^\w+\s*\(\s*\)/)) {
       return false;
     }
 
-    // Don't treat control structures as commands
     if (/^(if|for|while|case|function|until|select)\s/.test(line)) {
       return false;
     }
 
-    // Don't treat here-documents as commands
     if (line.includes('<<') || line.startsWith('EOF') || line.startsWith('END')) {
       return false;
     }
 
-    // Don't treat multi-line strings as commands
     if (line.includes('"""') || line.includes("'''")) {
       return false;
     }
 
-    // Additional command-like patterns (fallback for unmatched commands)
     const commandLikePatterns = [
-      /^[a-z][a-z0-9-_]*$/i, // Simple command names (like 'ls', 'grep', 'my-script')
-      /^\.\/[a-z0-9-_./]+$/i, // Relative executable paths (like './script.sh', './bin/command')
-      /^\/[a-z0-9-_./]+$/i, // Absolute executable paths (like '/usr/bin/command')
-      /^[a-z][a-z0-9-_]*\s+-.+/i, // Commands with flags (like 'command --flag')
+      /^[a-z][a-z0-9-_]*$/i,
+      /^\.\/[a-z0-9-_./]+$/i,
+      /^\/[a-z0-9-_./]+$/i,
+      /^[a-z][a-z0-9-_]*\s+-.+/i,
     ];
 
-    // Check if the first word looks like a command
-    const looksLikeCommand = commandLikePatterns.some((pattern) => pattern.test(firstWord));
-
-    return looksLikeCommand;
+    return commandLikePatterns.some((pattern) => pattern.test(firstWord));
   }
 
   private _looksLikeScriptContent(content: string): boolean {
     const lines = content.trim().split('\n');
 
-    // Indicators that this is a script file rather than commands to execute
     const scriptIndicators = [
-      /^#!/, // Shebang
-      /function\s+\w+/, // Function definitions
-      /^\w+\s*\(\s*\)\s*\{/, // Function definition syntax
-      /^(if|for|while|case)\s+.*?(then|do|in)/, // Control structures
-      /^\w+=[^=].*$/, // Variable assignments (not comparisons)
+      /^#!/,
+      /function\s+\w+/,
+      /^\w+\s*\(\s*\)\s*\{/,
+      /^(if|for|while|case)\s+.*?(then|do|in)/,
+      /^\w+=[^=].*$/,
       /^(local|declare|readonly)\s+/,
-      /^(source|\.)\s+/, // Source other scripts
-      /^(exit|return)\s+\d+/, // Exit codes
+      /^(source|\.)\s+/,
+      /^(exit|return)\s+\d+/,
     ];
 
-    // Check each line for script indicators
     for (const line of lines) {
       const trimmedLine = line.trim();
 
       if (trimmedLine.length === 0 || trimmedLine.startsWith('#')) {
-        continue; // Skip empty lines and comments
+        continue;
       }
 
       if (scriptIndicators.some((pattern) => pattern.test(trimmedLine))) {
@@ -496,7 +471,6 @@ ${content.trim()}
   }
 
   private _detectAndWrapShellCommands(_messageId: string, input: string, processed: Set<string>): string {
-    // Pattern to detect standalone shell code blocks that look like commands
     const shellCommandPattern = /```(bash|sh|shell|zsh|fish|powershell|ps1)\n([\s\S]*?)```/gi;
 
     return input.replace(shellCommandPattern, (match, language, content) => {
@@ -506,7 +480,6 @@ ${content.trim()}
         return match;
       }
 
-      // Check if this looks like commands to execute rather than a script file
       if (this._isShellCommand(content, language)) {
         processed.add(blockHash);
         logger.debug(`Auto-wrapped shell code block as command: ${language}`);
@@ -514,7 +487,6 @@ ${content.trim()}
         return this._wrapInShellAction(content, _messageId);
       }
 
-      // If it looks like a script, let the file detection patterns handle it
       return match;
     });
   }

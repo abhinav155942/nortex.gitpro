@@ -8,6 +8,7 @@ export const MODEL_REGEX = /^\[Model: (.*?)\]\n\n/;
 export const PROVIDER_REGEX = /\[Provider: (.*?)\]\n\n/;
 export const DEFAULT_MODEL = 'claude-3-5-sonnet-latest';
 export const PROMPT_COOKIE_KEY = 'cachedPrompt';
+export const LOCAL_PROVIDERS = ['Ollama', 'LMStudio', 'OpenAILike'];
 export const TOOL_EXECUTION_APPROVAL = {
   APPROVE: 'Yes, approved.',
   REJECT: 'No, rejected.',
@@ -143,5 +144,13 @@ export const STARTER_TEMPLATES: Template[] = [
     githubRepo: 'xKevIsDev/solidjs-ts-tw',
     tags: ['solidjs'],
     icon: 'i-nortex:solidjs',
+  },
+  {
+    name: 'Fast Next.js',
+    label: 'Fast Next.js (Minimal)',
+    description: 'Ultra-fast, minimal Next.js starter for quick prototyping (< 30s setup)',
+    githubRepo: 'local:minimal-nextjs',
+    tags: ['nextjs', 'react', 'minimal', 'fast'],
+    icon: 'i-nortex:nextjs',
   },
 ];

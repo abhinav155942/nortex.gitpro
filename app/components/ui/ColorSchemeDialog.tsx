@@ -8,9 +8,12 @@ import { defaultDesignScheme, designFeatures, designFonts, paletteRoles } from '
 export interface ColorSchemeDialogProps {
   designScheme?: DesignScheme;
   setDesignScheme?: (scheme: DesignScheme) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
 }
 
-export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignScheme, designScheme }) => {
+export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignScheme, designScheme, open, onOpenChange, showTrigger = true }) => {
   const [palette, setPalette] = useState<{ [key: string]: string }>(() => {
     if (designScheme?.palette) {
       return { ...defaultDesignScheme.palette, ...designScheme.palette };
@@ -21,8 +24,12 @@ export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignS
 
   const [features, setFeatures] = useState<string[]>(designScheme?.features || defaultDesignScheme.features);
   const [font, setFont] = useState<string[]>(designScheme?.font || defaultDesignScheme.font);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'colors' | 'typography' | 'features'>('colors');
+
+  // Use external state if provided, otherwise use internal state  
+  const isDialogOpen = open !== undefined ? open : internalOpen;
+  const setIsDialogOpen = onOpenChange !== undefined ? onOpenChange : setInternalOpen;
 
   useEffect(() => {
     if (designScheme) {
@@ -130,25 +137,22 @@ export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignS
             key={f.key}
             type="button"
             onClick={() => handleFontToggle(f.key)}
-            className={`group p-4 rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-nortex-elements-borderColorActive ${
-              font.includes(f.key)
-                ? 'bg-nortex-elements-item-backgroundAccent border-nortex-elements-borderColorActive shadow-lg'
-                : 'bg-nortex-elements-background-depth-3 border-nortex-elements-borderColor hover:border-nortex-elements-borderColorActive hover:bg-nortex-elements-bg-depth-2'
-            }`}
+            className={`group p-4 rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-nortex-elements-borderColorActive ${font.includes(f.key)
+              ? 'bg-nortex-elements-item-backgroundAccent border-nortex-elements-borderColorActive shadow-lg'
+              : 'bg-nortex-elements-background-depth-3 border-nortex-elements-borderColor hover:border-nortex-elements-borderColorActive hover:bg-nortex-elements-bg-depth-2'
+              }`}
           >
             <div className="text-center space-y-2">
               <div
-                className={`text-2xl font-medium transition-colors ${
-                  font.includes(f.key) ? 'text-nortex-elements-item-contentAccent' : 'text-nortex-elements-textPrimary'
-                }`}
+                className={`text-2xl font-medium transition-colors ${font.includes(f.key) ? 'text-nortex-elements-item-contentAccent' : 'text-nortex-elements-textPrimary'
+                  }`}
                 style={{ fontFamily: f.key }}
               >
                 {f.preview}
               </div>
               <div
-                className={`text-sm font-medium transition-colors ${
-                  font.includes(f.key) ? 'text-nortex-elements-item-contentAccent' : 'text-nortex-elements-textSecondary'
-                }`}
+                className={`text-sm font-medium transition-colors ${font.includes(f.key) ? 'text-nortex-elements-item-contentAccent' : 'text-nortex-elements-textSecondary'
+                  }`}
               >
                 {f.label}
               </div>
@@ -180,16 +184,14 @@ export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignS
               <button
                 type="button"
                 onClick={() => handleFeatureToggle(f.key)}
-                className={`group relative w-full p-6 text-sm font-medium transition-all duration-200 bg-nortex-elements-background-depth-3 text-nortex-elements-item-textSecondary ${
-                  f.key === 'rounded'
-                    ? isSelected
-                      ? 'rounded-3xl'
-                      : 'rounded-xl'
-                    : f.key === 'border'
-                      ? 'rounded-lg'
-                      : 'rounded-xl'
-                } ${
-                  f.key === 'border'
+                className={`group relative w-full p-6 text-sm font-medium transition-all duration-200 bg-nortex-elements-background-depth-3 text-nortex-elements-item-textSecondary ${f.key === 'rounded'
+                  ? isSelected
+                    ? 'rounded-3xl'
+                    : 'rounded-xl'
+                  : f.key === 'border'
+                    ? 'rounded-lg'
+                    : 'rounded-xl'
+                  } ${f.key === 'border'
                     ? isSelected
                       ? 'border-3 border-nortex-elements-borderColorActive bg-nortex-elements-item-backgroundAccent text-nortex-elements-item-contentAccent'
                       : 'border-2 border-nortex-elements-borderColor hover:border-nortex-elements-borderColorActive text-nortex-elements-textSecondary'
@@ -198,7 +200,7 @@ export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignS
                       : isSelected
                         ? 'bg-nortex-elements-item-backgroundAccent text-nortex-elements-item-contentAccent shadow-lg'
                         : 'bg-nortex-elements-bg-depth-3 hover:bg-nortex-elements-bg-depth-2 text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary'
-                } ${f.key === 'shadow' ? (isSelected ? 'shadow-xl' : 'shadow-lg') : 'shadow-md'}`}
+                  } ${f.key === 'shadow' ? (isSelected ? 'shadow-xl' : 'shadow-lg') : 'shadow-md'}`}
                 style={{
                   ...(f.key === 'gradient' && {
                     background: isSelected
@@ -212,16 +214,14 @@ export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignS
                   <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-nortex-elements-bg-depth-1 bg-opacity-20">
                     {f.key === 'rounded' && (
                       <div
-                        className={`w-6 h-6 bg-current transition-all duration-200 ${
-                          isSelected ? 'rounded-full' : 'rounded'
-                        } opacity-80`}
+                        className={`w-6 h-6 bg-current transition-all duration-200 ${isSelected ? 'rounded-full' : 'rounded'
+                          } opacity-80`}
                       />
                     )}
                     {f.key === 'border' && (
                       <div
-                        className={`w-6 h-6 rounded-lg transition-all duration-200 ${
-                          isSelected ? 'border-3 border-current opacity-90' : 'border-2 border-current opacity-70'
-                        }`}
+                        className={`w-6 h-6 rounded-lg transition-all duration-200 ${isSelected ? 'border-3 border-current opacity-90' : 'border-2 border-current opacity-70'
+                          }`}
                       />
                     )}
                     {f.key === 'gradient' && (
@@ -230,28 +230,24 @@ export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignS
                     {f.key === 'shadow' && (
                       <div className="relative">
                         <div
-                          className={`w-6 h-6 bg-current rounded-lg transition-all duration-200 ${
-                            isSelected ? 'opacity-90' : 'opacity-70'
-                          }`}
+                          className={`w-6 h-6 bg-current rounded-lg transition-all duration-200 ${isSelected ? 'opacity-90' : 'opacity-70'
+                            }`}
                         />
                         <div
-                          className={`absolute top-1 left-1 w-6 h-6 bg-current rounded-lg transition-all duration-200 ${
-                            isSelected ? 'opacity-40' : 'opacity-30'
-                          }`}
+                          className={`absolute top-1 left-1 w-6 h-6 bg-current rounded-lg transition-all duration-200 ${isSelected ? 'opacity-40' : 'opacity-30'
+                            }`}
                         />
                       </div>
                     )}
                     {f.key === 'frosted-glass' && (
                       <div className="relative">
                         <div
-                          className={`w-6 h-6 rounded-lg transition-all duration-200 backdrop-blur-sm bg-white/20 border border-white/30 ${
-                            isSelected ? 'opacity-90' : 'opacity-70'
-                          }`}
+                          className={`w-6 h-6 rounded-lg transition-all duration-200 backdrop-blur-sm bg-white/20 border border-white/30 ${isSelected ? 'opacity-90' : 'opacity-70'
+                            }`}
                         />
                         <div
-                          className={`absolute inset-0 w-6 h-6 rounded-lg transition-all duration-200 backdrop-blur-md bg-gradient-to-br from-white/10 to-transparent ${
-                            isSelected ? 'opacity-60' : 'opacity-40'
-                          }`}
+                          className={`absolute inset-0 w-6 h-6 rounded-lg transition-all duration-200 backdrop-blur-md bg-gradient-to-br from-white/10 to-transparent ${isSelected ? 'opacity-60' : 'opacity-40'
+                            }`}
                         />
                       </div>
                     )}
@@ -272,9 +268,11 @@ export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignS
 
   return (
     <div>
-      <IconButton title="Design Palette" className="transition-all" onClick={() => setIsDialogOpen(!isDialogOpen)}>
-        <div className="i-ph:palette text-xl"></div>
-      </IconButton>
+      {showTrigger && (
+        <IconButton title="Design Palette" className="transition-all" onClick={() => setIsDialogOpen(!isDialogOpen)}>
+          <div className="i-ph:palette text-xl"></div>
+        </IconButton>
+      )}
 
       <DialogRoot open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <Dialog>
@@ -299,11 +297,10 @@ export const ColorSchemeDialog: React.FC<ColorSchemeDialogProps> = ({ setDesignS
                 <button
                   key={tab.key}
                   onClick={() => setActiveSection(tab.key as any)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                    activeSection === tab.key
-                      ? 'bg-nortex-elements-background-depth-3 text-nortex-elements-textPrimary shadow-md'
-                      : 'bg-nortex-elements-background-depth-2 text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary hover:bg-nortex-elements-bg-depth-2'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${activeSection === tab.key
+                    ? 'bg-nortex-elements-background-depth-3 text-nortex-elements-textPrimary shadow-md'
+                    : 'bg-nortex-elements-background-depth-2 text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary hover:bg-nortex-elements-bg-depth-2'
+                    }`}
                 >
                   <span className={`${tab.icon} text-lg`} />
                   <span>{tab.label}</span>

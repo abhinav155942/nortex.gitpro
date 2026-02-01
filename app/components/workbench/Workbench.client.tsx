@@ -15,20 +15,24 @@ import {
 import { IconButton } from '~/components/ui/IconButton';
 import { Slider, type SliderOptions } from '~/components/ui/Slider';
 import { workbenchStore, type WorkbenchViewType } from '~/lib/stores/workbench';
-import { classNames } from '~/utils/classNames';
+
 import { cubicEasingFn } from '~/utils/easings';
 import { renderLogger } from '~/utils/logger';
 import { EditorPanel } from './EditorPanel';
 import { Preview } from './Preview';
 import useViewport from '~/lib/hooks';
 
-import { usePreviewStore } from '~/lib/stores/previews';
+
 import { chatStore } from '~/lib/stores/chat';
 import type { ElementInfo } from './Inspector';
-import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportChatButton';
-import { useChatHistory } from '~/lib/persistence';
+
 import { streamingState } from '~/lib/stores/streaming';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { TerminalTabs } from './terminal/TerminalTabs';
+import { classNames } from '~/utils/classNames';
+import { DatabasePanel } from './DatabasePanel';
+import { usePreviewStore } from '~/lib/stores/previews';
+import { previewControlSignal } from '~/lib/stores/previewControl';
+
 
 interface WorkspaceProps {
   chatStarted?: boolean;
@@ -288,13 +292,14 @@ export const Workbench = memo(
     updateChatMestaData: _updateChatMestaData,
     setSelectedElement,
   }: WorkspaceProps) => {
+
+    // Hooks
     renderLogger.trace('Workbench');
 
     const [fileHistory, setFileHistory] = useState<Record<string, FileHistory>>({});
 
-    // const modifiedFiles = Array.from(useStore(workbenchStore.unsavedFiles).keys());
-
     const hasPreview = useStore(computed(workbenchStore.previews, (previews) => previews.length > 0));
+    const previews = useStore(workbenchStore.previews);
     const showWorkbench = useStore(workbenchStore.showWorkbench);
     const selectedFile = useStore(workbenchStore.selectedFile);
     const currentDocument = useStore(workbenchStore.currentDocument);
@@ -306,8 +311,9 @@ export const Workbench = memo(
 
     const isSmallViewport = useViewport(1024);
     const streaming = useStore(streamingState);
-    const { exportChat } = useChatHistory();
-    const [isSyncing, setIsSyncing] = useState(false);
+    const previewStore = usePreviewStore();
+    const previewMode = useStore(previewStore.previewMode);
+    const activePreview = previews[0];
 
     const setSelectedView = (view: WorkbenchViewType) => {
       workbenchStore.currentView.set(view);
@@ -335,13 +341,21 @@ export const Workbench = memo(
       workbenchStore.setSelectedFile(filePath);
     }, []);
 
+    const handleSyncFiles = useCallback(async () => {
+      // Logic removed as per user request
+    }, []);
+
+    const handleFastSetup = useCallback(async () => {
+      await workbenchStore.runProjectSetup();
+      toast.success('Starting project setup...');
+    }, []);
+
     const onFileSave = useCallback(() => {
       workbenchStore
         .saveCurrentDocument()
         .then(() => {
           // Explicitly refresh all previews after a file save
-          const previewStore = usePreviewStore();
-          previewStore.refreshAllPreviews();
+          workbenchStore.previewsStore.refreshAllPreviews();
         })
         .catch(() => {
           toast.error('Failed to update file content');
@@ -357,158 +371,174 @@ export const Workbench = memo(
       workbenchStore.currentView.set('diff');
     }, []);
 
-    const handleSyncFiles = useCallback(async () => {
-      setIsSyncing(true);
-
-      try {
-        const directoryHandle = await window.showDirectoryPicker();
-        await workbenchStore.syncFiles(directoryHandle);
-        toast.success('Files synced successfully');
-      } catch (error) {
-        console.error('Error syncing files:', error);
-        toast.error('Failed to sync files');
-      } finally {
-        setIsSyncing(false);
-      }
-    }, []);
-
     return (
       chatStarted && (
         <motion.div
-          initial="closed"
-          animate={showWorkbench ? 'open' : 'closed'}
-          variants={workbenchVariants}
-          className="z-workbench"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="h-full w-full relative"
         >
-          <div
-            className={classNames(
-              'fixed top-[calc(var(--header-height)+1.2rem)] bottom-6 w-[var(--workbench-inner-width)] z-0 transition-[left,width] duration-200 nortex-ease-cubic-bezier',
-              {
-                'w-full': isSmallViewport,
-                'left-0': showWorkbench && isSmallViewport,
-                'left-[var(--workbench-left)]': showWorkbench,
-                'left-[100%]': !showWorkbench,
-              },
-            )}
-          >
-            <div className="absolute inset-0 px-2 lg:px-4">
-              <div className="h-full flex flex-col bg-nortex-elements-background-depth-2 border border-nortex-elements-borderColor shadow-sm rounded-lg overflow-hidden">
-                <div className="flex items-center px-3 py-2 border-b border-nortex-elements-borderColor gap-1.5">
+          <div className="h-full w-full relative bg-nortex-elements-background-depth-2 border-l border-nortex-elements-borderColor overflow-hidden flex flex-col">
+            {/* Workbench Header */}
+            <div className="flex-shrink-0 h-[38px] flex items-center justify-between px-3 bg-nortex-elements-background-depth-1 border-b border-nortex-elements-borderColor z-30 select-none">
+              <div className="flex items-center gap-1 h-full">
+                {[
+                  { id: 'preview', label: 'App' },
+                  { id: 'code', label: 'Code' },
+                  { id: 'database', label: 'Database' },
+                  { id: 'payments', label: 'Payments' },
+                  { id: 'analytics', label: 'Analytics' }
+                ].map((item) => (
                   <button
-                    className={`${showChat ? 'i-ph:sidebar-simple-fill' : 'i-ph:sidebar-simple'} text-lg text-nortex-elements-textSecondary mr-1`}
-                    disabled={!canHideChat || isSmallViewport}
-                    onClick={() => {
-                      if (canHideChat) {
-                        chatStore.setKey('showChat', !showChat);
-                      }
-                    }}
-                  />
-                  <Slider selected={selectedView} options={sliderOptions} setSelected={setSelectedView} />
-                  <div className="ml-auto" />
-                  {selectedView === 'code' && (
-                    <div className="flex overflow-y-auto">
-                      {/* Export Chat Button */}
-                      <ExportChatButton exportChat={exportChat} />
-
-                      {/* Sync Button */}
-                      <div className="flex border border-nortex-elements-borderColor rounded-md overflow-hidden ml-1">
-                        <DropdownMenu.Root>
-                          <DropdownMenu.Trigger
-                            disabled={isSyncing || streaming}
-                            className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-accent-500 text-white hover:text-nortex-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-nortex-elements-button-primary-backgroundHover outline-accent-500 flex gap-1.7"
-                          >
-                            {isSyncing ? 'Syncing...' : 'Sync'}
-                            <span className={classNames('i-ph:caret-down transition-transform')} />
-                          </DropdownMenu.Trigger>
-                          <DropdownMenu.Content
-                            className={classNames(
-                              'min-w-[240px] z-[250]',
-                              'bg-white dark:bg-[#141414]',
-                              'rounded-lg shadow-lg',
-                              'border border-gray-200/50 dark:border-gray-800/50',
-                              'animate-in fade-in-0 zoom-in-95',
-                              'py-1',
-                            )}
-                            sideOffset={5}
-                            align="end"
-                          >
-                            <DropdownMenu.Item
-                              className={classNames(
-                                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-nortex-elements-textPrimary hover:bg-nortex-elements-item-backgroundActive gap-2 rounded-md group relative',
-                              )}
-                              onClick={handleSyncFiles}
-                              disabled={isSyncing}
-                            >
-                              <div className="flex items-center gap-2">
-                                {isSyncing ? (
-                                  <div className="i-ph:spinner" />
-                                ) : (
-                                  <div className="i-ph:cloud-arrow-down" />
-                                )}
-                                <span>{isSyncing ? 'Syncing...' : 'Sync Files'}</span>
-                              </div>
-                            </DropdownMenu.Item>
-                          </DropdownMenu.Content>
-                        </DropdownMenu.Root>
-                      </div>
-
-                      {/* Toggle Terminal Button */}
-                      <div className="flex border border-nortex-elements-borderColor rounded-md overflow-hidden ml-1">
-                        <button
-                          onClick={() => {
-                            workbenchStore.toggleTerminal(!workbenchStore.showTerminal.get());
-                          }}
-                          className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-accent-500 text-white hover:text-nortex-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-nortex-elements-button-primary-backgroundHover outline-accent-500 flex gap-1.7"
-                        >
-                          <div className="i-ph:terminal" />
-                          Toggle Terminal
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedView === 'diff' && (
-                    <FileModifiedDropdown fileHistory={fileHistory} onSelectFile={handleSelectFile} />
-                  )}
-                  <IconButton
-                    icon="i-ph:x-circle"
-                    className="-mr-1"
-                    size="xl"
-                    onClick={() => {
-                      workbenchStore.showWorkbench.set(false);
-                    }}
-                  />
-                </div>
-                <div className="relative flex-1 overflow-hidden">
-                  <View initial={{ x: '0%' }} animate={{ x: selectedView === 'code' ? '0%' : '-100%' }}>
-                    <EditorPanel
-                      editorDocument={currentDocument}
-                      isStreaming={isStreaming}
-                      selectedFile={selectedFile}
-                      files={files}
-                      unsavedFiles={unsavedFiles}
-                      fileHistory={fileHistory}
-                      onFileSelect={onFileSelect}
-                      onEditorScroll={onEditorScroll}
-                      onEditorChange={onEditorChange}
-                      onFileSave={onFileSave}
-                      onFileReset={onFileReset}
-                    />
-                  </View>
-                  <View
-                    initial={{ x: '100%' }}
-                    animate={{ x: selectedView === 'diff' ? '0%' : selectedView === 'code' ? '100%' : '-100%' }}
+                    key={item.id}
+                    onClick={() => setSelectedView(item.id as any)}
+                    className={classNames(
+                      "h-full px-3 text-sm font-medium transition-colors relative flex items-center",
+                      selectedView === item.id
+                        ? "text-nortex-elements-textPrimary"
+                        : "text-nortex-elements-textTertiary hover:text-nortex-elements-textSecondary"
+                    )}
                   >
-                    <DiffView fileHistory={fileHistory} setFileHistory={setFileHistory} />
-                  </View>
-                  <View initial={{ x: '100%' }} animate={{ x: selectedView === 'preview' ? '0%' : '100%' }}>
-                    <Preview setSelectedElement={setSelectedElement} />
-                  </View>
+                    {item.label}
+                    {selectedView === item.id && (
+                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent-500" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Preview Controls (Visible only when App is selected) */}
+              {selectedView === 'preview' && (
+                <div className="flex items-center gap-3 animate-fade-in ml-auto">
+                  {/* Navigation */}
+                  <div className="flex items-center gap-1">
+                    <IconButton title="Back" onClick={() => previewControlSignal.set({ action: 'back', id: '' })}>
+                      <div className="i-ph:arrow-left text-nortex-elements-textSecondary" />
+                    </IconButton>
+                    <IconButton title="Forward" onClick={() => previewControlSignal.set({ action: 'forward', id: '' })}>
+                      <div className="i-ph:arrow-right text-nortex-elements-textSecondary" />
+                    </IconButton>
+                    <IconButton title="Reload" onClick={() => previewControlSignal.set({ action: 'reload', id: '' })}>
+                      <div className="i-ph:arrow-clockwise text-nortex-elements-textSecondary" />
+                    </IconButton>
+                  </div>
+
+                  <div className="w-px h-4 bg-nortex-elements-borderColor" />
+
+                  {/* Device Toggles */}
+                  <div className="flex bg-nortex-elements-background-depth-2 rounded-md border border-nortex-elements-borderColor p-0.5">
+                    <button onClick={() => previewStore.previewMode.set('desktop')} className={classNames("p-1.5 rounded transition-colors", previewMode === 'desktop' ? "bg-nortex-elements-item-backgroundActive text-nortex-elements-textPrimary" : "text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary")} title="Desktop">
+                      <div className="i-ph:desktop text-sm" />
+                    </button>
+                    <button onClick={() => previewStore.previewMode.set('tablet')} className={classNames("p-1.5 rounded transition-colors", previewMode === 'tablet' ? "bg-nortex-elements-item-backgroundActive text-nortex-elements-textPrimary" : "text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary")} title="Tablet">
+                      <div className="i-ph:device-tablet text-sm" />
+                    </button>
+                    <button onClick={() => previewStore.previewMode.set('mobile')} className={classNames("p-1.5 rounded transition-colors", previewMode === 'mobile' ? "bg-nortex-elements-item-backgroundActive text-nortex-elements-textPrimary" : "text-nortex-elements-textSecondary hover:text-nortex-elements-textPrimary")} title="Mobile">
+                      <div className="i-ph:device-mobile text-sm" />
+                    </button>
+                  </div>
+
+                  {/* Open External */}
+                  <IconButton title="Open in New Tab" onClick={() => activePreview?.baseUrl && window.open(activePreview.baseUrl, '_blank')}>
+                    <div className="i-ph:arrow-square-out text-nortex-elements-textSecondary" />
+                  </IconButton>
                 </div>
+              )}
+
+              {/* Fast Setup / Download */}
+              <div className="flex items-center gap-3 shrink-0 ml-auto">
+                {selectedView === 'code' && (
+                  <button
+                    onClick={() => workbenchStore.downloadZip()}
+                    className="flex items-center gap-2 text-xs text-nortex-elements-textTertiary hover:text-nortex-elements-textPrimary transition-colors"
+                  >
+                    <div className="i-ph:download-simple" />
+                    Download code
+                    <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[9px] px-1 rounded font-bold">PRO</span>
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* Content Area */}
+            <div className="flex-1 relative overflow-hidden">
+              {/* Layer 1: Preview (Always mounted to preserve state, but hidden via visibility if not active) */}
+              <div
+                className={classNames(
+                  "absolute inset-0 z-0 overflow-hidden bg-nortex-elements-background-depth-2",
+                  selectedView === 'preview' ? 'visible' : 'hidden'
+                )}
+              >
+                <Preview setSelectedElement={setSelectedElement} />
+              </div>
+
+              {/* Layer 2: Code Editor */}
+              {(selectedView === 'code' || selectedView === 'diff') && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute inset-0 z-10 bg-nortex-elements-background-depth-2 flex flex-col overflow-hidden"
+                >
+                  <div className="relative flex-1 overflow-hidden">
+                    {selectedView === 'code' ? (
+                      <EditorPanel
+                        editorDocument={currentDocument}
+                        isStreaming={isStreaming}
+                        selectedFile={selectedFile}
+                        files={files}
+                        unsavedFiles={unsavedFiles}
+                        fileHistory={fileHistory}
+                        onFileSelect={onFileSelect}
+                        onEditorScroll={onEditorScroll}
+                        onEditorChange={onEditorChange}
+                        onFileSave={onFileSave}
+                        onFileReset={onFileReset}
+                      />
+                    ) : (
+                      <DiffView fileHistory={fileHistory} setFileHistory={setFileHistory} />
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Layer 3: Database Panel */}
+              {selectedView === 'database' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute inset-0 z-10 bg-nortex-elements-background-depth-2 overflow-hidden"
+                >
+                  <DatabasePanel />
+                </motion.div>
+              )}
+
+              {/* Layer 4: Payments Placeholder */}
+              {selectedView === 'payments' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute inset-0 z-10 bg-nortex-elements-background-depth-2 flex items-center justify-center flex-col gap-4"
+                >
+                  <div className="i-ph:cardholder text-4xl text-nortex-elements-textTertiary" />
+                  <p className="text-nortex-elements-textSecondary text-sm">Payments module coming soon.</p>
+                </motion.div>
+              )}
+
+              {/* Layer 5: Console (Terminal) */}
+              {selectedView === 'analytics' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute inset-0 z-10 bg-nortex-elements-background-depth-2 overflow-hidden flex flex-col"
+                >
+                  <TerminalTabs fullScreen={true} />
+                </motion.div>
+              )}
+
+            </div>
           </div>
-        </motion.div>
+        </motion.div >
       )
     );
   },

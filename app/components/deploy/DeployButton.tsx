@@ -131,9 +131,9 @@ export const DeployButton = ({
         <DropdownMenu.Root>
           <DropdownMenu.Trigger
             disabled={isDeploying || !activePreview || isStreaming}
-            className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-accent-500 text-white hover:text-nortex-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-nortex-elements-button-primary-backgroundHover outline-accent-500 flex gap-1.7"
+            className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-blue-600 text-white hover:bg-blue-700 outline-none flex gap-1.7 font-medium"
           >
-            {isDeploying ? `Deploying to ${deployingTo}...` : 'Deploy'}
+            {isDeploying ? `Publishing to ${deployingTo}...` : 'Publish'}
             <span className={classNames('i-ph:caret-down transition-transform')} />
           </DropdownMenu.Trigger>
           <DropdownMenu.Content
@@ -157,6 +157,7 @@ export const DeployButton = ({
               )}
               disabled={isDeploying || !activePreview || !netlifyConn.user}
               onClick={handleNetlifyDeployClick}
+              title={!netlifyConn.user ? 'No Netlify Account Connected' : 'Deploy to Netlify'}
             >
               <img
                 className="w-5 h-5"
@@ -164,6 +165,7 @@ export const DeployButton = ({
                 width="24"
                 crossOrigin="anonymous"
                 src="https://cdn.simpleicons.org/netlify"
+                alt="netlify"
               />
               <span className="mx-auto">
                 {!netlifyConn.user ? 'No Netlify Account Connected' : 'Deploy to Netlify'}
